@@ -33,3 +33,23 @@ unsigned short port_word_in (unsigned short port) {
 void port_word_out (unsigned short port, unsigned short data) {
     __asm__("out %%ax, %%dx" : : "a" (data), "d" (port));
 }
+
+unsigned int _io_load_eflags() {
+    unsigned int eflags;
+    __asm__("pushfl");
+    __asm__("pop %0" : "=r" (eflags));
+    return eflags;
+}
+
+void _io_restore_eflags (unsigned int eflags) {
+    __asm__("push %0" : : "r" (eflags));
+    __asm__("popfl");
+}
+
+void _io_cli (void) {
+    __asm__("cli");
+}
+
+void _io_sti (void) {
+    __asm__("sti");
+}

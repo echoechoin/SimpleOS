@@ -5,7 +5,7 @@ LD   := i386-elf-ld
 GDB  := i386-elf-gdb
 
 CFLAGS := -g
-KERNEL_OFFSET := 0x8200 # `指示`内核起始地址
+KERNEL_OFFSET := 0x8000 # `指示`内核起始地址
 IMG := os-image.bin
 
 C_SOURCES := $(wildcard kernel/*.c drivers/*.c)
@@ -17,7 +17,7 @@ all: ${IMG}
 ${IMG}: boot/boot.bin kernel.bin
 	cat $^ > $@
 
-kernel.bin: boot/kernel_entry.o ${OBJ}
+kernel.bin: boot/kernel_entry.o drivers/ports.o drivers/screen.o kernel/util.o kernel/kernel.o
 	$(LD) -Ttext ${KERNEL_OFFSET} --oformat binary -o $@ $^
 
 # 用于调试内核
@@ -27,6 +27,9 @@ kernel.elf: boot/kernel_entry.o ${OBJ}
 debug: ${IMG} kernel.elf
 	qemu-system-i386 -s -fda ${IMG} &
 	$(GDB) -ex "target remote localhost:1234" -ex "symbol-file kernel.elf"
+
+run: ${IMG}
+	qemu-system-i386 -s -fda ${IMG}
 
 %.o: %.c ${HEADERS}
 	$(CC) ${CFLAGS} -ffreestanding -c $< -o $@

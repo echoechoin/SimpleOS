@@ -1,70 +1,59 @@
 ;=============================================================================
-
-; 参数为ax: 字符串的首地址
+; 打印行结束符
 print_nl:
     pusha
-    mov bx, eol
+    mov bx, MSG_EOL
     call print
     popa
     ret
 
 ;=============================================================================
+; 打印字符串
+; 参数为ax: 字符串的首地址
 print:
     pusha
-print_init:
+__print_init:
     mov si, bx
     mov ah, 0x0e
     mov bh, 0x00
     mov bl, 0x0f
-print_loop:
+__print_loop:
     mov al, byte [si]
     cmp al, 0x00
-    je print_return
+    je __print_return
     int 0x10
     add si, 1
-    jmp print_loop
-print_return:
+    jmp __print_loop
+__print_return:
     popa
     ret
 
 ;=============================================================================
-; 参数为dx: 待打印的字符
+; 打印dx中的内容为16进制
 print_hex:
     pusha
+    mov cx, 0 
 
-    mov cx, 0 ; our index variable
+__hex_loop:
+    cmp cx, 4
+    je __hex_loop_end
 
-; Strategy: get the last char of 'dx', then convert to ASCII
-; Numeric ASCII values: '0' (ASCII 0x30) to '9' (0x39), so just add 0x30 to byte N.
-; For alphabetic characters A-F: 'A' (ASCII 0x41) to 'F' (0x46) we'll add 0x40
-; Then, move the ASCII byte to the correct position on the resulting string
-hex_loop:
-    cmp cx, 4 ; loop 4 times
-    je hex_loop_end
-    
-    ; 1. convert last char of 'dx' to ascii
-    mov ax, dx ; we will use 'ax' as our working register
-    and ax, 0x000f ; 0x1234 -> 0x0004 by masking first three to zeros
-    add al, 0x30 ; add 0x30 to N to convert it to ASCII "N"
-    cmp al, 0x39 ; if > 9, add extra 8 to represent 'A' to 'F'
-    jle hex_loop_step2
-    add al, 7 ; 'A' is ASCII 65 instead of 58, so 65-58=7
+    mov ax, dx
+    and ax, 0x000f
+    add al, 0x30
+    cmp al, 0x39
+    jle __hex_loop_step2
+    add al, 7
 
-hex_loop_step2:
-    ; 2. get the correct position of the string to place our ASCII char
-    ; bx <- base address + string length - index of char
-    mov bx, HEX_OUT + 5 ; base + length
-    sub bx, cx  ; our index variable
-    mov [bx], al ; copy the ASCII char on 'al' to the position pointed by 'bx'
-    ror dx, 4 ; 0x1234 -> 0x4123 -> 0x3412 -> 0x2341 -> 0x1234
-
-    ; increment index and loop
+__hex_loop_step2:
+    mov bx, HEX_OUT + 5
+    sub bx, cx
+    mov [bx], al
+    ror dx, 4
     add cx, 1
-    jmp hex_loop
+    jmp __hex_loop
 
-hex_loop_end:
-    ; prepare the parameter and call the function
-    ; remember that print receives parameters in 'bx'
+__hex_loop_end:
     mov bx, HEX_OUT
     call print
 
@@ -72,47 +61,81 @@ hex_loop_end:
     ret
 
 ;=============================================================================
-; 作用为加载一个扇区的512字节到内存中
-; 参数为ch-dh-cl CHS; es:bx: 内存地址
-disk_load:
+; 加载内核
+load_kernel:
     pusha
-    ; reload disk
-    mov ah, 0x00
-    int 0x13
-    jc disk_load_error
-disk_load_init:
-    mov ah, 0x02
-    mov al, 1
-    mov dl, 0
-    int 0x13
-    jc disk_load_error
-    
-disk_load_return:
+    mov ax, KERNEL_OFFSET
+    shr ax, 4
+
+    mov ch, 0x00 ; C0
+    mov dh, 0x00 ; H0
+    mov cl, 0x02 ; S2
+    mov es, ax
+    mov bx, 0x0000
+
+__read_loop:
+    ; ; 调试用
+    ; push dx
+    ; mov dx, es
+    ; call print_hex
+    ; call print_nl
+    ; pop dx
+
+    MOV ah, 0x02          ; AH=0x02：读盘
+    MOV al, 1             ; 1个扇区
+    MOV dl, 0x00          ; A驱动器
+    INT 0x13              ; 调用磁盘BIOS
+    jc __read_error
+
+    mov ax, es
+    add ax, 0x0020
+    mov es, ax
+
+    add cl, 1
+    cmp cl, 18
+    jbe __read_loop
+
+    mov cl, 1
+    add dh, 1
+    cmp dh, 2
+    jb __read_loop
+
+    mov dh, 0
+    add ch, 1
+    cmp ch, 10
+    jb __read_loop
+
+__load_kernel_end:
     popa
     ret
 
-disk_load_error:
-    mov bx, msg3
+
+__read_error:
+    mov ax, MSG_LOAD_ERR
     call print
     jmp $
 
 ;=============================================================================
 ; 设置VGA显卡模式
-; 参数为al: 模式
-set_VGA_MODE:
+set_vga_mode:
     pusha
-    mov ah, 0x00
+    mov ax, 0x13
     int 0x10
     popa
     ret
 
+;=============================================================================
+debug:
+    pusha
+    mov bx, MSG_DEBUG
+    call print
+    popa
+    ret
 
-msg1:
-    db ">> Hello, SimleOS!",            0x0a, 0x0d, 0x00
-msg3:
-    db ">> load error!",                0x0a, 0x0d, 0x00
-eol:
-    db 0x0a, 0x0d, 0x00
-HEX_OUT:
-    db "0x", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+MSG_LOGO      db ">> Hello, SimpleOS!",         0x0a, 0x0d, 0x00
+MSG_LOAD_ERR  db ">> load error!",              0x0a, 0x0d, 0x00
+MSG_DEBUG     db ">> debug",                    0x0a, 0x0d, 0x00
+MSG_REAL_MODE db "Started in 16-bit real mode", 0x0a, 0x0d, 0x00
+MSG_EOL       db                                0x0a, 0x0d, 0x00
+HEX_OUT       db "0x", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 

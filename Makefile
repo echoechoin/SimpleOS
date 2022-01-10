@@ -48,6 +48,6 @@ debug:${IMG} kernel.elf
 	$(CC) ${CFLAGS} -ffreestanding -c $< -o $@
 
 clean:
-	rm -rf .sys .bin *.elf ${IMG}
+	rm -rf *.sys *.bin *.elf ${IMG}
 	rm -rf kernel/*.o boot/*.bin boot/*.o
 	rm -rf drivers/*.o

@@ -23,8 +23,8 @@ ${IMG}: boot/ipl.bin boot/boot.bin kernel.bin
 	@dd if=boot/ipl.bin  of=$@ bs=512 count=1 conv=notrunc > /dev/null 2>&1
 	@echo "load kernel..."
 	@sudo mount $@ mnt
-	@cat boot/boot.bin kernel.bin > os-image
-	@sudo cp os-image mnt/
+	@cat boot/boot.bin kernel.bin > os-image.elf
+	@sudo mv os-image.elf mnt
 	@sudo umount mnt
 
 kernel.bin: boot/kernel_entry.o ${OBJ}
@@ -48,6 +48,6 @@ debug:${IMG} kernel.elf
 	$(CC) ${CFLAGS} -ffreestanding -c $< -o $@
 
 clean:
-	rm -rf os-image.sys kernel.bin kernel.elf ${IMG}
+	rm -rf .sys .bin *.elf ${IMG}
 	rm -rf kernel/*.o boot/*.bin boot/*.o
 	rm -rf drivers/*.o

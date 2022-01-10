@@ -12,6 +12,8 @@ OBJ           := ${C_SOURCES:.c=.o}
 KERNEL_OFFSET := 0x280000
 CFLAGS        := -g
 
+.PHONY: all clean debug kernel.bin kernel.elf ${IMG}
+
 all: ${IMG}
 
 ${IMG}: boot/ipl.bin boot/boot.bin kernel.bin

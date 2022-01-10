@@ -7,12 +7,9 @@ DSKCAC0      EQU   0x00008000
 
 entry:
     call set_vga_mode
-
-    mov bx, MSG_LOGO
-    call print
-
     call enable_a20_gate
     call switch_to_32bit_mode
+    jmp $
 
 set_vga_mode:
     pusha
@@ -62,24 +59,6 @@ switch_to_32bit_mode:
     mov cr0, eax
     jmp init_pm
 
-align 16
-gdt_start:
-    resb  8
-gdt_data:
-    dw 0xffff, 0x0000, 0x9200, 0x00cf  ; 可写的32位段寄存器
-gdt_code:
-    dw 0xffff, 0x0000, 0x9a28, 0x0047  ; 可执行的文件的32位寄存器
-    dw 0
-
-gdt_end:
-
-gdt_descriptor:
-    dw gdt_end - gdt_start - 1
-    dd gdt_start
-CODE_SEG equ gdt_code - gdt_start
-DATA_SEG equ gdt_data - gdt_start
-
-
 init_pm:
     mov ax, DATA_SEG 
     mov ds, ax
@@ -96,7 +75,7 @@ init_pm:
 
 skip:
     mov esp, 0xffff
-    JMP DWORD CODE_SEG:0x00000000
+    JMP DWORD CODE_SEG:0
 
 memcpy:
     mov eax, [esi]
@@ -107,7 +86,16 @@ memcpy:
     jnz memcpy            ; 结果不为0跳转至memcpy
     ret
 
-MSG_LOGO dd "hello world"
-
+align 16
+GDT_START resb  8
+GDT_DATA  dw 0xffff, 0x0000, 0x9200, 0x00cf  ; 可写的32位段寄存器
+GDT_CODE  dw 0xffff, 0x0000, 0x9a28, 0x0047  ; 可执行的文件的32位寄存器
+          dw 0
+GDT_END:
+gdt_descriptor:
+    dw GDT_END - GDT_START - 1
+    dd GDT_START
+CODE_SEG equ GDT_CODE - GDT_START
+DATA_SEG equ GDT_DATA - GDT_START
 
 kernel:

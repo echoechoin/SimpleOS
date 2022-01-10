@@ -1,1 +1,1 @@
-mnt directory for make.
+mnt directory for Makefile.

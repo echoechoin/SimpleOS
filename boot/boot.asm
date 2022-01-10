@@ -1,30 +1,113 @@
-[org 0x7c00] ; bootloader offset
-KERNEL_OFFSET equ 0x8000
-init:
-    MOV ax, 0
-    MOV ss, ax
-    mov sp, 0x7c00
-    mov ds, ax 
+[org 0xc200]
+[bits 16]
+
+KERNEL_ENTRY EQU   0x00280000
+DSKCAC       EQU   0x00100000
+DSKCAC0      EQU   0x00008000
 
 entry:
+    call set_vga_mode
+
     mov bx, MSG_LOGO
     call print
 
-    mov bx, MSG_REAL_MODE
-    call print
+    call enable_a20_gate
+    call switch_to_32bit_mode
 
-    call load_kernel
-    call set_vga_mode
-    call switch_to_pm
+set_vga_mode:
+    pusha
+    mov ax, 0x13
+    int 0x10
+    popa
+    ret
 
-%include "boot/16bit_common_functions.asm"
-%include "boot/32bit_gdt.asm"
-%include "boot/32bit_switch.asm"
+enable_a20_gate:
+    call waitkbdout
+    mov al, 0xd1
+    out 0x64, al
+    call waitkbdout
+    mov al, 0xdf          ; 开启a20
+    out 0x60, al
+    call waitkbdout
+    ret
 
-[bits 32]
-BEGIN_PM:
-    call KERNEL_OFFSET
-    jmp $
+waitkbdout:
+    in al, 0x64
+    and al, 0x02
+    jnz waitkbdout         ; and结果不为0跳转至waitkbdout
+    ret
 
-times 510-($-$$) db 0
-dw 0xaa55
+print:
+    pusha
+    mov si, bx
+    mov ah, 0x0e
+    mov bh, 0x00
+    mov bl, 0x0f
+__print_loop:
+    mov al, byte [si]
+    cmp al, 0x00
+    je __print_return
+    int 0x10
+    add si, 1
+    jmp __print_loop
+__print_return:
+    popa
+    ret
+
+switch_to_32bit_mode:
+    cli
+    lgdt [gdt_descriptor]
+    mov eax, cr0
+    or eax, 0x1
+    mov cr0, eax
+    jmp init_pm
+
+align 16
+gdt_start:
+    resb  8
+gdt_data:
+    dw 0xffff, 0x0000, 0x9200, 0x00cf  ; 可写的32位段寄存器
+gdt_code:
+    dw 0xffff, 0x0000, 0x9a28, 0x0047  ; 可执行的文件的32位寄存器
+    dw 0
+
+gdt_end:
+
+gdt_descriptor:
+    dw gdt_end - gdt_start - 1
+    dd gdt_start
+CODE_SEG equ gdt_code - gdt_start
+DATA_SEG equ gdt_data - gdt_start
+
+
+init_pm:
+    mov ax, DATA_SEG 
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
+    ; kernel传递
+    mov esi, kernel; 源
+    mov edi, KERNEL_ENTRY; 目标
+    mov ecx, 512*1024/4
+    call memcpy
+
+skip:
+    mov esp, 0xffff
+    JMP DWORD CODE_SEG:0x00000000
+
+memcpy:
+    mov eax, [esi]
+    add esi, 4
+    mov [edi], eax
+    add edi, 4
+    sub ecx, 1
+    jnz memcpy            ; 结果不为0跳转至memcpy
+    ret
+
+MSG_LOGO dd "hello world"
+
+
+kernel:

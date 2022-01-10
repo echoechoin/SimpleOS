@@ -50,21 +50,6 @@ static void set_palette(int color, unsigned char r, unsigned char g, unsigned ch
     port_byte_out(0x03c9, b / 4);
 }
 
-void draw_rectangle(unsigned char color, int x0, int y0, int x1, int y1) {
-    int x, y;
-    for (y = y0; y <= y1; y++) {
-        for (x = x0; x <= x1; x++) {
-            _io_cli();
-            int eflags = _io_load_eflags();
-
-            put_pixel(color, x, y);
-
-            _io_sti();
-            _io_restore_eflags(eflags);
-        }
-    }
-}
-
 void put_pixel(unsigned char color, int x, int y) {
     unsigned char *vram = (unsigned char *)VGA_ADDRESS;
     vram[y * 320 + x] = color;
@@ -81,21 +66,30 @@ void draw_char(unsigned char color, int x, int y, char c) {
     }
 }
 
-void init_screen(int x, int y) {
-    draw_rectangle(COL8_DARK_LIGHT_BLUE, 0,      0,      x - 1,  y - 29);
-    draw_rectangle(COL8_LIGHT_BLUE,      0,      0,      x - 1,  y - 28);
-    draw_rectangle(COL8_WHITE,           0,      0,      x - 1,  y - 27);
-    draw_rectangle(COL8_LIGHT_BLUE,      0,      y - 26, x - 1,  y - 1 );
+void draw_rectangle(unsigned char color, int x0, int y0, int x1, int y1) {
+    int x, y;
+    for (y = y0; y <= y1; y++) {
+        for (x = x0; x <= x1; x++) {
+            put_pixel(color, x, y);
+        }
+    }
+}
 
-    draw_rectangle(COL8_DARK_LIGHT_BLUE, 3,      y - 24, 59,     y - 24);
-    draw_rectangle(COL8_LIGHT_BLUE,      2,      y - 24, 2,      y - 4 );
+void init_screen(int x, int y) {
+    draw_rectangle(COL8_DARK_GREY,       0,      0,      x - 1,  y - 29);
+    draw_rectangle(COL8_LIGHT_GREY,      0,      0,      x - 1,  y - 28);
+    draw_rectangle(COL8_WHITE,           0,      0,      x - 1,  y - 27);
+    draw_rectangle(COL8_LIGHT_GREY,      0,      y - 26, x - 1,  y - 1 );
+
+    draw_rectangle(COL8_DARK_GREY,       3,      y - 24, 59,     y - 24);
+    draw_rectangle(COL8_LIGHT_GREY,      2,      y - 24, 2,      y - 4 );
     draw_rectangle(COL8_WHITE,           3,      y - 4,  59,     y - 4 );
-    draw_rectangle(COL8_LIGHT_BLUE,      59,     y - 23, 59,     y - 5 );
+    draw_rectangle(COL8_LIGHT_GREY,      59,     y - 23, 59,     y - 5 );
     draw_rectangle(COL8_WHITE,           2,      y - 4,  59,     y - 3 );
     draw_rectangle(COL8_WHITE,           60,     y - 24, 60,     y - 3 );
 
-    draw_rectangle(COL8_DARK_LIGHT_BLUE, x - 47, y - 24, x - 4,  y - 24);
-    draw_rectangle(COL8_LIGHT_BLUE,      x - 47, y - 23, x - 47, y - 4 );
+    draw_rectangle(COL8_DARK_GREY,       x - 47, y - 24, x - 4,  y - 24);
+    draw_rectangle(COL8_LIGHT_GREY,      x - 47, y - 23, x - 47, y - 4 );
     draw_rectangle(COL8_WHITE,           x - 47, y - 3,  x - 4,  y - 3 );
     draw_rectangle(COL8_WHITE,           x - 3,  y - 24, x - 3,  y - 3 );
 }

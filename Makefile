@@ -4,8 +4,6 @@ CC   := i386-elf-gcc
 LD   := i386-elf-ld
 GDB  := i386-elf-gdb
 
-CFLAGS := -g
-KERNEL_OFFSET := 0x8000 # `指示`内核起始地址
 IMG := os-image.bin
 
 C_SOURCES := $(wildcard kernel/*.c drivers/*.c)
@@ -14,25 +12,16 @@ OBJ = ${C_SOURCES:.c=.o}
 
 all: ${IMG}
 
-${IMG}: boot/boot.bin kernel.bin
-	cat $^ > $@
+${IMG}: boot/ipl.bin boot/boot.bin kernel.bin
+	dd if=/dev/zero     of=$@ bs=512 count=2880
+	dd if=boot/ipl.bin  of=$@ bs=512 count=1 conv=notrunc
+	sudo mount $@ mnt
+	cat boot/boot.bin kernel.bin > kernel.sys
+	sudo cp kernel.sys mnt/
+	sudo umount mnt
 
-kernel.bin: boot/kernel_entry.o drivers/ports.o drivers/screen.o kernel/util.o kernel/kernel.o
-	$(LD) -Ttext ${KERNEL_OFFSET} --oformat binary -o $@ $^
-
-# 用于调试内核
-kernel.elf: boot/kernel_entry.o ${OBJ}
-	$(LD) -o $@ -Ttext ${KERNEL_OFFSET} $^
-
-debug: ${IMG} kernel.elf
-	qemu-system-i386 -s -fda ${IMG} &
-	$(GDB) -ex "target remote localhost:1234" -ex "symbol-file kernel.elf"
-
-run: ${IMG}
-	qemu-system-i386 -s -fda ${IMG}
-
-%.o: %.c ${HEADERS}
-	$(CC) ${CFLAGS} -ffreestanding -c $< -o $@
+kernel.bin: boot/kernel_entry.o ${OBJ}
+	$(LD) -Ttext 0x280000 --oformat binary -o $@ $^
 
 %.o: %.asm
 	$(AS) -f elf -o $@ $<

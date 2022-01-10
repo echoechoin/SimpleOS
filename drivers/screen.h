@@ -20,8 +20,10 @@
 #define COL8_DARK_GREY       15
 
 void init_palette(void);
+void init_screen(int x, int y);
+
 void draw_rectangle(unsigned char color, int x0, int y0, int x1, int y1);
 void draw_char(unsigned char color, int x, int y, char c);
 
-void init_screen(int x, int y);
+
 

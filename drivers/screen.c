@@ -1,7 +1,7 @@
 #include "screen.h"
 #include "ports.h"
 #include "charbitmap.h"
-#include "../kernel/util.h"
+#include "util.h"
 
 static void set_palette(int color, unsigned char r, unsigned char g, unsigned char b);
 void put_pixel(unsigned char color, int x, int y);
@@ -63,6 +63,13 @@ void draw_char(unsigned char color, int x, int y, char c) {
                 put_pixel(color, x + j, y + i);
             }
         }
+    }
+}
+
+void draw_string(unsigned char color, int x, int y, char *str) {
+    for (; *str != 0; str++) {
+        draw_char(color, x, y, *str);
+        x += 8;
     }
 }
 

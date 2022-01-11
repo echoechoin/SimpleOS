@@ -48,4 +48,4 @@ clean:
 	rm -rf *.sys *.bin *.elf ${IMG}
 	rm -rf kernel/*.o boot/*.bin boot/*.o
 	rm -rf drivers/*.o
-	rm -rf **/**/*.o*
+	rm -rf **/**/*.o

@@ -21,10 +21,11 @@
 
 void init_palette(void);
 void init_screen(int x, int y);
+void init_mouse(char *mouse, char background);
 
+void draw_mouse(int x, int y, char*mouse);
 void draw_rectangle(unsigned char color, int x0, int y0, int x1, int y1);
 void draw_char(unsigned char color, int x, int y, char c);
 void draw_string(unsigned char color, int x, int y, char *str);
-
 
 

@@ -2,9 +2,10 @@
 #include "ports.h"
 #include "charbitmap.h"
 #include "util.h"
+#include "stdio.h"
 
 static void set_palette(int color, unsigned char r, unsigned char g, unsigned char b);
-void put_pixel(unsigned char color, int x, int y);
+void draw_pixel(unsigned char color, int x, int y);
 
 void init_palette(void) {
     int i;
@@ -43,6 +44,53 @@ void init_palette(void) {
     }
 }
 
+void init_mouse(char *mouse, char background) {
+    static char cursor[16][16] = {
+        "**************..",
+        "*OOOOOOOOOOO*...",
+        "*OOOOOOOOOO*....",
+        "*OOOOOOOOO*.....",
+        "*OOOOOOOO*......",
+        "*OOOOOOO*.......",
+        "*OOOOOOO*.......",
+        "*OOOOOOOO*......",
+        "*OOOO**OOO*.....",
+        "*OOO*..*OOO*....",
+        "*OO*....*OOO*...",
+        "*O*......*OOO*..",
+        "**........*OOO*.",
+        "*..........*OOO*",
+        "............*OO*",
+        ".............***"
+    };
+
+    for (int y = 0; y < 16; y++) {
+        for (int x = 0; x < 16; x++) {
+            if (cursor[y][x] == '*') {
+                mouse[y * 16 + x] = COL8_BLACK;
+            }
+
+            if (cursor[y][x] == 'O') {
+                mouse[y * 16 + x] = COL8_WHITE;
+            }
+
+            if (cursor[y][x] == '.') {
+                mouse[y * 16 + x] = background;
+            }
+        }
+    }
+} 
+
+void draw_mouse(int x, int y, char*mouse) {
+    int index = 0;
+    int i, j;
+    for (i = 0; i < 16; i++) {
+        for (j = 0; j < 16; j++) {
+            draw_pixel(mouse[index++], i + x, j + y); 
+        }
+    }
+}
+
 static void set_palette(int color, unsigned char r, unsigned char g, unsigned char b) {
     port_byte_out(0x03c8, color);
     port_byte_out(0x03c9, r / 4);
@@ -50,9 +98,9 @@ static void set_palette(int color, unsigned char r, unsigned char g, unsigned ch
     port_byte_out(0x03c9, b / 4);
 }
 
-void put_pixel(unsigned char color, int x, int y) {
+void draw_pixel(unsigned char color, int x, int y) {
     unsigned char *vram = (unsigned char *)VGA_ADDRESS;
-    vram[y * 320 + x] = color;
+    vram[y * SCREEN_WIDTH + x] = color;
 }
 
 void draw_char(unsigned char color, int x, int y, char c) {
@@ -60,7 +108,7 @@ void draw_char(unsigned char color, int x, int y, char c) {
     for (i = 0; i < 16; i++) {
         for (j = 0; j < 8; j++) {
             if (charbitmap[c * 16 + i] & (0x80 >> j)) {
-                put_pixel(color, x + j, y + i);
+                draw_pixel(color, x + j, y + i);
             }
         }
     }
@@ -77,7 +125,7 @@ void draw_rectangle(unsigned char color, int x0, int y0, int x1, int y1) {
     int x, y;
     for (y = y0; y <= y1; y++) {
         for (x = x0; x <= x1; x++) {
-            put_pixel(color, x, y);
+            draw_pixel(color, x, y);
         }
     }
 }

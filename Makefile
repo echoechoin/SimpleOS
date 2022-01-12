@@ -7,7 +7,7 @@ QEMU := qemu-system-i386
 
 IMG           := os-image.bin
 C_SOURCES     := $(wildcard kernel/*.c drivers/*.c libc/stdio/*.c)
-OBJ           := ${C_SOURCES:.c=.o}
+OBJ           := ${C_SOURCES:.c=.o} kernel/int_handler.o
 KERNEL_OFFSET := 0x280000
 CFLAGS        := -std=gnu99 -g -I./include -I./libc/include
 

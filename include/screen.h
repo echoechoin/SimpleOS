@@ -1,3 +1,6 @@
+#ifndef _SCREEN_H_
+#define _SCREEN_H_
+
 #define SCREEN_WIDTH 320
 #define SCREEN_HEIGHT 200
 #define VGA_ADDRESS 0xa0000
@@ -28,4 +31,4 @@ void draw_rectangle(unsigned char color, int x0, int y0, int x1, int y1);
 void draw_char(unsigned char color, int x, int y, char c);
 void draw_string(unsigned char color, int x, int y, char *str);
 
-
+#endif

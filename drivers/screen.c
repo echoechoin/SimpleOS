@@ -3,6 +3,7 @@
 #include "charbitmap.h"
 #include "util.h"
 #include "stdio.h"
+#include "string.h"
 
 static void set_palette(int color, unsigned char r, unsigned char g, unsigned char b);
 void draw_pixel(unsigned char color, int x, int y);

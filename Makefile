@@ -6,7 +6,7 @@ GDB  := i386-elf-gdb
 QEMU := qemu-system-i386
 
 IMG           := os-image.bin
-C_SOURCES     := $(wildcard kernel/*.c drivers/*.c libc/stdio/*.c)
+C_SOURCES     := $(wildcard kernel/*.c drivers/*.c libc/**/*.c)
 OBJ           := ${C_SOURCES:.c=.o} kernel/int_handler.o
 KERNEL_OFFSET := 0x280000
 CFLAGS        := -std=gnu99 -g -I./include -I./libc/include

@@ -153,42 +153,73 @@ JC error
 
 中断记录表（interrupt descriptor table）
 
-### PIC programming interrupt controller
+#### 初始化PIC
 
-1. PIC中的寄存器
-    * IMR: 中断屏蔽寄存器，用于屏蔽中断
-    
-        ```S
-        OUT 0x21, 0xFF; 屏蔽PCI0的所有中断
-        OUT 0xA1, 0xFF; 屏蔽PCI1的所有中断
-        ```
-    
-        - ICW: initial control word，初始化控制字
-        
-            初始化中断：
+##### PIC中的寄存器
 
-            ```S
-            OUT 0x21, 0xFF; 屏蔽PCI0的所有中断
-            OUT 0xA1, 0xFF; 屏蔽PCI1的所有中断
+* IMR: 中断屏蔽寄存器，用于屏蔽中断
+* IRR: 中断请求寄存器，用于请求中断
+* ISR: 中断服务寄存器，用于中断服务
 
-            OUT 0x20, 0x11;       边缘触发模式
-            OUT 0x21, 0x20;       IRQ0-7由INT20-27接收   
-            OUT 0x21, 00000100h;  PIC1由IRQ2连接
-            OUT 0x21, 0x01;       无缓冲区模式
+##### PIC
 
-            out 0xA0, 0x11;       边缘触发模式
-            out 0xA1, 0x28;       IRQ8-15由INT28-2f接收
-            out 0xA1, 2;          PIC1由IRQ2连接
-            out 0xA1, 0x01;       无缓冲区模式
+1. 初始化PIC
 
-            OUT 0x21, 0xFb;       PIC1以外中断全部禁止
-            OUT 0xA1, 0xFF;       屏蔽PCI1的所有中断
+每个外设（主和从）都有一个命令端口和数据端口（在表中给出）。当没有命令被发出时，数据端口允许我们访问8259 PIC的中断屏蔽。
 
-            ```
+Chip - Purpose       | I/O port
+-------------------- | ---------
+Master PIC - Command | 0x0020
+Master PIC - Data    | 0x0021
+Slave PIC - Command  | 0x00A0
+Slave PIC - Data     | 0x00A1
 
-    * IRR: 中断请求寄存器，用于请求中断
-    * ISR: 中断服务寄存器，用于中断服务
+```asm
+// IMR：中断屏蔽寄存器
+// 屏蔽PIC0和PIC1的所有中断
+port_byte_out(PIC0_IMR, 0xff);
+port_byte_out(PIC1_IMR, 0xff);
 
+//PIC1使用端口0x20接收命令，0x21接收数据。PIC2使用端口0xA0接收指令，0xA1接收数据。
+port_byte_out(PIC0_ICW1, 0x11);    // 设置为边沿触发模式 
+port_byte_out(PIC0_ICW2, 0x20);    // IRQ0-7由INT20-27接收
+port_byte_out(PIC0_ICW3, 1 << 2);  // PIC1由IRQ2接收
+port_byte_out(PIC0_ICW4, 0x01);    // 无缓冲区模式
+
+port_byte_out(PIC1_ICW1, 0x11);    // 设置为边沿触发模式
+port_byte_out(PIC1_ICW2, 0x28);    // IRQ8-15由INT28-2f接收
+port_byte_out(PIC1_ICW3, 2);       // PIC1由IRQ2接收
+port_byte_out(PIC1_ICW4, 0x01);    // 无缓冲区模式
+
+port_byte_out(PIC0_IMR, 0xfb);     // PIC1以外的所有中断都屏蔽
+port_byte_out(PIC1_IMR, 0xff);     // 全部屏蔽
+```
+2. 向PIC发送中断结束信号
+
+发送 EOI 稍微复杂一些：要发送 EOI，你需要把特殊的 EOI 字节（0x60）和相应的 IRQ 号进行 OR。但是，如果你想发送 EOI 到从片，你还需要向主片发送 EOI，在级联引脚上。否则，主片将永远不知道从片中断已经被服务。
+
+例子：
+
+```
+// 发送键盘中断EOI给PIC0
+// 0x60 + IRQ1
+port_byte_out(PIC0_OCW2, 0x61);
+```
+
+#### 鼠标中断
+
+
+
+
+#### 键盘中断
+
+1. 从port 0x60获取设备输入的8位按键编码信息。
+
+```asm
+in 0x60, al ; al = keycode
+```
+
+> 右ctrl按下/松开的编码是两个键码：0xe0 0x1d/0x9d, 会产生两次中断
 
 ### pushfl popfl
 

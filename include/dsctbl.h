@@ -36,8 +36,6 @@ struct GATE_DESCRIPTOR {
 void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit, int base, int ar);
 void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar);
 
-// void load_gdtr(int addr);
-// void load_idtr(int addr);
 void load_gdtr(int limit, int addr);
 void load_idtr(int limit, int addr);
 

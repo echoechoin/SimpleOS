@@ -1,7 +1,4 @@
 #include "interrupt.h"
-#include "screen.h"
-
-static int count = 0;
 
 void init_pic(void) {
     // IMR：中断屏蔽寄存器
@@ -26,17 +23,17 @@ void init_pic(void) {
 
 // IRQ1: 键盘中断
 void int_handler21(void) {
+    unsigned char data;
+    data = port_byte_in(0x60);
+    fifo_bytes_put(&fifo_key, data);
     port_byte_out(PIC0_OCW2, 0x61); // 通知PIC IRQ-1的受理已经完成
-    char s[24] = "hello keyboard!";
-    draw_string(COL8_BLACK,0,count,s);
-    count += 16;
+    return;
 }
 
 // IRQ7: 
 void int_handler27(void) {
-    char s[24] = "hello keyboard!";
-    draw_string(COL8_BLACK,0,16,s);
     port_byte_out(PIC0_OCW2, 0x67);
+    return;
 }
 
 // IRQ12: 鼠标中断
@@ -44,6 +41,6 @@ void int_handler2c(void) {
     port_byte_out(PIC1_OCW2, 0x64); // 通知PIC1 IRQ-12的受理已经完成
     port_byte_out(PIC0_OCW2, 0x62); // 通知PIC0 IRQ-02的受理已经完成
     char s[24] = "hello world!";
-    draw_string(COL8_BLACK,0,0,s);
+    draw_string(COL8_BLACK,0,32,s);
 }
 

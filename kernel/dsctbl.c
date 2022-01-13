@@ -31,7 +31,7 @@ void load_gdtr(int limit, int addr) {
     gdtr[3] = (addr >> 8) & 0xff;
     gdtr[4] = (addr >> 16) & 0xff;
     gdtr[5] = (addr >> 24) & 0xff;
-    asm volatile ("lgdt (%0)" : : "r" (gdtr));
+    __asm__ __volatile__ ("lgdt (%0)" : : "r" (gdtr));
 }
 
 void load_idtr(int limit, int addr) {
@@ -42,7 +42,7 @@ void load_idtr(int limit, int addr) {
     idtr[3] = (addr >> 8) & 0xff;
     idtr[4] = (addr >> 16) & 0xff;
     idtr[5] = (addr >> 24) & 0xff;
-    asm volatile ("lidt (%0)" : : "r" (idtr));
+    __asm__ __volatile__ ("lidt (%0)" : : "r" (idtr));
 }
 
 void init_gdt(void) {

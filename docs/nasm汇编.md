@@ -221,6 +221,13 @@ in 0x60, al ; al = keycode
 
 > 右ctrl按下/松开的编码是两个键码：0xe0 0x1d/0x9d, 会产生两次中断
 
+2. 判断键盘控制电路是否可以处理CPU指令
+
+```asm
+in 0x64, al ; al = status
+; 如果al的bit1为0，则可以处理指令
+```
+
 ### pushfl popfl
 
 - pushfl 将寄存器的标志位压入栈中

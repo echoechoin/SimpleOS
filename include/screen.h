@@ -24,7 +24,7 @@
 
 void init_palette(void);
 void init_screen(int x, int y);
-void init_mouse(char *mouse, char background);
+void init_mouse_cursor(char *mouse, char background);
 
 void draw_mouse(int x, int y, char*mouse);
 void draw_rectangle(unsigned char color, int x0, int y0, int x1, int y1);

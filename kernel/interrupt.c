@@ -1,5 +1,7 @@
 #include "interrupt.h"
 
+static void wait_KBC_sendready(void);
+
 void init_pic(void) {
     // IMR：中断屏蔽寄存器
     // 屏蔽PIC0和PIC1的所有中断
@@ -21,6 +23,32 @@ void init_pic(void) {
     port_byte_out(PIC1_IMR, 0xff);     // 全部屏蔽
 }
 
+static void wait_KBC_sendready(void) {
+    for (;;) {
+        if ((port_byte_in(PORT_KEYSTA) & KEYSTA_SEND_NOTREADY) == 0) {
+            break;
+        }
+    }
+    return;
+}
+
+void init_keyboard(void) {
+    // 初始化键盘控制电路
+    wait_KBC_sendready();
+    port_byte_out(PORT_KEYCMD, KEYCMD_WRITE_MODE);
+    wait_KBC_sendready();
+    port_byte_out(PORT_KEYDAT, KBC_MODE);
+    return;
+}
+
+void init_mouse(void) {
+    wait_KBC_sendready();
+    port_byte_out(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
+    wait_KBC_sendready();
+    port_byte_out(PORT_KEYDAT, MOUSECMD_ENABLE);
+    return;
+}
+
 // IRQ1: 键盘中断
 void int_handler21(void) {
     unsigned char data;
@@ -38,9 +66,10 @@ void int_handler27(void) {
 
 // IRQ12: 鼠标中断
 void int_handler2c(void) {
+    unsigned char data;
+    data = port_byte_in(0x60);
+    fifo_bytes_put(&fifo_mouse, data);
     port_byte_out(PIC1_OCW2, 0x64); // 通知PIC1 IRQ-12的受理已经完成
     port_byte_out(PIC0_OCW2, 0x62); // 通知PIC0 IRQ-02的受理已经完成
-    char s[24] = "hello world!";
-    draw_string(COL8_BLACK,0,32,s);
+    return;
 }
-

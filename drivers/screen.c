@@ -45,7 +45,7 @@ void init_palette(void) {
     }
 }
 
-void init_mouse(char *mouse, char background) {
+void init_mouse_cursor(char *mouse, char background) {
     static char cursor[16][16] = {
         "**************..",
         "*OOOOOOOOOOO*...",

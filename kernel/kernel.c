@@ -26,8 +26,10 @@ void main() {
     port_byte_out(PIC1_IMR, 0xef); // 开放鼠标中断
     draw_string(COL8_BLUE, 0, 0, "Hello, OS!");
     struct mouse_desc md = {0};
+    md.mx = SCREEN_WIDTH / 2;
+    md.my = SCREEN_HEIGHT / 2;
     draw_mouse(md.mx, md.my, buf_mouse);
-    int i = memset(0x40000000, 0xbfffffff) /(1024*1024);
+    int i = memtest(0x40000000, 0x4fffffff) / (1024*1024);
     sprintf(s, "mem: %d MB", i);
     draw_string(COL8_BLACK, 0, 48, s);
 

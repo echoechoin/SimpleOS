@@ -13,4 +13,7 @@ void _io_sti (void);
 unsigned int _io_load_eflags();
 void _io_restore_eflags (unsigned int eflags);
 
+int _io_load_cr0(void);
+void _io_restore_cr0(int cr0);
+
 #endif

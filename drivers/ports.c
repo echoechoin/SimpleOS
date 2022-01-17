@@ -46,6 +46,15 @@ void _io_restore_eflags (unsigned int eflags) {
     __asm__("popfl");
 }
 
+int _io_load_cr0(void) {
+    int cr0;
+    __asm__("mov %%cr0, %0" : "=r" (cr0));
+}
+
+void _io_restore_cr0(int cr0) {
+    __asm__("mov %0, %%cr0" : : "r" (cr0));
+}
+
 void _io_cli (void) {
     __asm__("cli");
 }

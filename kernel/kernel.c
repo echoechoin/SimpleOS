@@ -4,65 +4,7 @@
 #include "dsctbl.h"
 #include "ports.h"
 #include "fifo.h"
-
-struct mouse_desc {
-    unsigned char buf[3], phase;
-    int x, y, btn;
-    int mx;
-    int my;
-};
-int mouse_decode(struct mouse_desc *mdec, unsigned char dat) {
-    if (mdec->phase == 0) {
-        if (dat == 0xfa) {
-            mdec->phase = 1;
-        }
-        return 0;
-    }
-    if (mdec->phase == 1) {
-        if ((dat & 0xc8) == 0x08) {
-            mdec->buf[0] = dat;
-            mdec->phase = 2;
-        }
-        return 0;
-    }
-    if (mdec->phase == 2) {
-        mdec->buf[1] = dat;
-        mdec->phase = 3;
-        return 0;
-    }
-    if (mdec->phase == 3) {
-        mdec->buf[2] = dat;
-        mdec->phase = 1;
-        mdec->btn = mdec->buf[0] & 0x07;
-        mdec->x = mdec->buf[1];
-        mdec->y = mdec->buf[2];
-
-        if (mdec->buf[0] & 0x10) {
-            mdec->x |= 0xffffff00;
-        }
-        if (mdec->buf[0] & 0x20) {
-            mdec->y |= 0xffffff00;
-        }
-        mdec->y = -mdec->y;
-        if (mdec->mx + mdec->x < 0) {
-            mdec->mx = 0;
-        } else if (mdec->mx + mdec->x > SCREEN_WIDTH) {
-            mdec->mx = SCREEN_WIDTH;
-        } else {
-            mdec->mx += mdec->x;
-        }
-        if (mdec->my + mdec->y < 0) {
-            mdec->my = 0;
-        } else if (mdec->my + mdec->y > SCREEN_HEIGHT) {
-            mdec->my = SCREEN_HEIGHT;
-        } else {
-            mdec->my += mdec->y;
-        }
-
-        return 1;
-    }
-    return -1;
-}
+#include "memory.h"
 
 void main() {
     char buf_mouse[256];
@@ -85,6 +27,10 @@ void main() {
     draw_string(COL8_BLUE, 0, 0, "Hello, OS!");
     struct mouse_desc md = {0};
     draw_mouse(md.mx, md.my, buf_mouse);
+    int i = memset(0x40000000, 0xbfffffff) /(1024*1024);
+    sprintf(s, "mem: %d MB", i);
+    draw_string(COL8_BLACK, 0, 48, s);
+
     for (;;) {
         _io_cli();
         if (fifo_bytes_count(&fifo_key) + fifo_bytes_count(&fifo_mouse) == 0) {

@@ -35,13 +35,25 @@ void asm_int_handler21(void);
 void asm_int_handler27(void);
 void asm_int_handler2c(void);
 
-
+// keyboard
 #define KEY_FIFO_BUF_SIZE 32
 struct FIFO_BYTES fifo_key;
 unsigned char key_buf[KEY_FIFO_BUF_SIZE];
 
+
+// mouse
 #define MOUSE_FIFO_BUF_SIZE 32
+struct mouse_desc {
+    unsigned char buf[3], phase;
+    int x, y, btn;
+    int mx;
+    int my;
+};
 struct FIFO_BYTES fifo_mouse;
 unsigned char mouse_buf[MOUSE_FIFO_BUF_SIZE];
+
+
+int mouse_decode(struct mouse_desc *mdec, unsigned char dat);
+
 
 #endif

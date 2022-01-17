@@ -85,8 +85,14 @@ void init_mouse_cursor(char *mouse, char background) {
 void draw_mouse(int x, int y, char*mouse) {
     int index = 0;
     int i, j;
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+    if (x > SCREEN_WIDTH) x = SCREEN_WIDTH;
+    if (y > SCREEN_HEIGHT) y = SCREEN_HEIGHT;
     for (i = 0; i < 16; i++) {
         for (j = 0; j < 16; j++) {
+            if (x + i >= SCREEN_WIDTH) continue;
+            if (y +i >= SCREEN_HEIGHT) continue;
             draw_pixel(mouse[index++], i + x, j + y); 
         }
     }

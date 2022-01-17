@@ -49,6 +49,59 @@ void init_mouse(void) {
     return;
 }
 
+int mouse_decode(struct mouse_desc *mdec, unsigned char dat) {
+    if (mdec->phase == 0) {
+        if (dat == 0xfa) {
+            mdec->phase = 1;
+        }
+        return 0;
+    }
+    if (mdec->phase == 1) {
+        if ((dat & 0xc8) == 0x08) {
+            mdec->buf[0] = dat;
+            mdec->phase = 2;
+        }
+        return 0;
+    }
+    if (mdec->phase == 2) {
+        mdec->buf[1] = dat;
+        mdec->phase = 3;
+        return 0;
+    }
+    if (mdec->phase == 3) {
+        mdec->buf[2] = dat;
+        mdec->phase = 1;
+        mdec->btn = mdec->buf[0] & 0x07;
+        mdec->x = mdec->buf[1];
+        mdec->y = mdec->buf[2];
+
+        if (mdec->buf[0] & 0x10) {
+            mdec->x |= 0xffffff00;
+        }
+        if (mdec->buf[0] & 0x20) {
+            mdec->y |= 0xffffff00;
+        }
+        mdec->y = -mdec->y;
+        if (mdec->mx + mdec->x < 0) {
+            mdec->mx = 0;
+        } else if (mdec->mx + mdec->x > SCREEN_WIDTH) {
+            mdec->mx = SCREEN_WIDTH;
+        } else {
+            mdec->mx += mdec->x;
+        }
+        if (mdec->my + mdec->y < 0) {
+            mdec->my = 0;
+        } else if (mdec->my + mdec->y > SCREEN_HEIGHT) {
+            mdec->my = SCREEN_HEIGHT;
+        } else {
+            mdec->my += mdec->y;
+        }
+
+        return 1;
+    }
+    return -1;
+}
+
 // IRQ1: 键盘中断
 void int_handler21(void) {
     unsigned char data;

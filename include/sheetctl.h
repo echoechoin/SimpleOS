@@ -1,4 +1,11 @@
+#ifndef _SHEETCLT_H_
+#define _SHEETCLT_H_
+
+#include "memory.h"
+#include "stdio.h"
+#include "screen.h"
 #define MAX_SHEETS 256
+#define SHEET_USE 1
 struct SHEET
 {
     unsigned char *buf;
@@ -16,10 +23,19 @@ struct SHTCTL
     unsigned char *vram;              // 显存地址
     int xsize;                        // 屏幕的宽度
     int ysize;                        // 屏幕的高度
-    int top;
+    int top;                          // 当前最上面的图层
     struct SHEET *sheets[MAX_SHEETS];
     struct SHEET sheets0[MAX_SHEETS];
 };
 
 
 struct SHTCTL *shtctl_init(struct MEMMAN *memman, unsigned char *vram, int xsize, int ysize);
+void sheet_setbuf(struct SHEET *sht, unsigned char *buf, int xsize, int ysize,
+                  int col_inv);
+void sheet_updown(struct SHTCTL *ctl, struct SHEET *sht, int height);
+void sheet_refreshsub(struct SHTCTL *ctl, int vx0, int vy0, int vx1, int vy1);
+void sheet_refresh(struct SHTCTL *ctl, struct SHEET *sht, int bx0, int by0,
+                   int bx1, int by1);
+void sheet_slide(struct SHTCTL *ctl, struct SHEET *sht, int vx0, int vy0);
+void sheet_free(struct SHTCTL *ctl, struct SHEET *sht);
+#endif

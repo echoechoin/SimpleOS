@@ -23,6 +23,7 @@ struct SHEET
 struct SHTCTL
 {
     unsigned char *vram;              // 显存地址
+    unsigned char *map;               // 图层映射表
     int xsize;                        // 屏幕的宽度
     int ysize;                        // 屏幕的高度
     int top;                          // 当前最上面的图层

@@ -76,8 +76,8 @@ void main() {
 
     // 修改图层高度并刷新图层
     sheet_updown(sht_back, 0);
+    sheet_updown(sht_win, 2);
     sheet_updown(sht_mouse, 2);
-    sheet_updown(sht_win, 1);
     
     // 修改并刷新图层
     draw_string(buf_back, SCREEN_WIDTH, COL8_RED, 0, 0, "echoechoin");

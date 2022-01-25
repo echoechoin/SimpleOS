@@ -26,10 +26,10 @@ void init_palette(void);
 void init_screen(unsigned char *vram, int x, int y);
 void init_mouse_cursor(char *mouse, char background);
 
-void draw_pixel(unsigned char *vram, unsigned char color, int x, int y);
-void draw_mouse(unsigned char *vram, int x, int y, char*mouse);
-void draw_rectangle(unsigned char *vram, unsigned char color, int x0, int y0, int x1, int y1);
-void draw_char(unsigned char *vram, unsigned char color, int x, int y, char c);
-void draw_string(unsigned char *vram, unsigned char color, int x, int y, char *str);
+void draw_pixel(unsigned char *vram, int xsize,unsigned char color, int x, int y);
+void draw_mouse(unsigned char *vram, int xsize,int x, int y, char*mouse);
+void draw_rectangle(unsigned char *vram, int xsize,unsigned char color, int x0, int y0, int x1, int y1);
+void draw_char(unsigned char *vram, int xsize,unsigned char color, int x, int y, char c);
+void draw_string(unsigned char *vram, int xsize, unsigned char color, int x, int y, char *str);
 
 #endif

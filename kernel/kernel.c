@@ -6,6 +6,7 @@
 #include "fifo.h"
 #include "memory.h"
 #include "sheetctl.h"
+#include "window.h"
 
 
 void init_mem(struct MEMMAN *memman)
@@ -17,13 +18,14 @@ void init_mem(struct MEMMAN *memman)
     memman_free(memman, 0x00400000, memtotal - 0x00400000);
 }
 
+
 void main() {
     unsigned char data;
     char s[25] = {0};
     struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
     struct SHTCTL *shtctl;
-    struct SHEET *sht_back, *sht_mouse;
-    unsigned char *buf_back, buf_mouse[256];
+    struct SHEET *sht_back, *sht_mouse, *sht_win;
+    unsigned char *buf_back, buf_mouse[256], *buf_win;
 
     init_gdt();
     init_idt();
@@ -46,33 +48,40 @@ void main() {
         .my = SCREEN_HEIGHT / 2,
     };
 
-    shtctl = shtctl_init(memman, VGA_ADDRESS, SCREEN_WIDTH, SCREEN_HEIGHT);
+    shtctl = shtctl_init(memman, (unsigned char *)VGA_ADDRESS, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     buf_back =(unsigned char *)memman_alloc_4k(memman, SCREEN_WIDTH * SCREEN_HEIGHT);
+    buf_win = (unsigned char *)memman_alloc_4k(memman, 160 * 68);
 
     // 给每个图层分配缓冲区
     sht_back = sheet_alloc(shtctl);
     sht_mouse = sheet_alloc(shtctl);
+    sht_win = sheet_alloc(shtctl);
+
+    // 初始化buffer中的内容
+    init_screen(buf_back, SCREEN_WIDTH, SCREEN_HEIGHT);
+    init_mouse_cursor(buf_mouse, 99);
+    init_window(buf_win, 160, 68, "window");
+    draw_string(buf_win, 160, COL8_RED, 2, 30,"hello, SimpleOS!");
 
     // 设置图层的buffer和size
     sheet_setbuf(sht_back, buf_back, SCREEN_WIDTH, SCREEN_HEIGHT, -1);                               // 没有透明色
     sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99); // 透明色号99
-
-    // 初始化图层buffer中的内容
-    init_screen(buf_back, SCREEN_WIDTH, SCREEN_HEIGHT);
-    init_mouse_cursor(buf_mouse, 99);
+    sheet_setbuf(sht_win, buf_win, 160, 68, -1);
 
     // 移动图层位置并刷新图层
-    sheet_slide(shtctl, sht_back, 0, 0);
-    sheet_slide(shtctl, sht_mouse, md.mx, md.my);
+    sheet_slide(sht_back, 0, 0);
+    sheet_slide(sht_mouse, md.mx, md.my);
+    sheet_slide(sht_win, 80, 72);
 
     // 修改图层高度并刷新图层
-    sheet_updown(shtctl, sht_back, 0);
-    sheet_updown(shtctl, sht_mouse, 1);
-
+    sheet_updown(sht_back, 0);
+    sheet_updown(sht_mouse, 2);
+    sheet_updown(sht_win, 1);
+    
     // 修改并刷新图层
-    draw_string(buf_back, COL8_RED, 0, 0, "Hello, SimpleOS!");
-    sheet_refresh(shtctl, sht_back, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    draw_string(buf_back, SCREEN_WIDTH, COL8_RED, 0, 0, "echoechoin");
+    sheet_refresh(sht_back, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     for (;;) {
         _io_cli();
         if (fifo_bytes_count(&fifo_key) + fifo_bytes_count(&fifo_mouse) == 0) {
@@ -84,17 +93,17 @@ void main() {
         if (fifo_bytes_count(&fifo_key) != 0) {
             i = fifo_bytes_get(&fifo_key, &data);
             sprintf(s, "key: %02x", data);
-            draw_rectangle(buf_back, COL8_WHITE, 0, 48, 80, 64);
-            draw_string(buf_back, COL8_BLACK, 0, 48, s);
-            sheet_refresh(shtctl, sht_back, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+            draw_rectangle(buf_back, SCREEN_WIDTH, COL8_WHITE, 0, 48, 80, 64);
+            draw_string(buf_back, SCREEN_WIDTH, COL8_BLACK, 0, 48, s);
+            sheet_refresh(sht_back, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
         } else if (fifo_bytes_count(&fifo_mouse) != 0) {
             i = fifo_bytes_get(&fifo_mouse, &data);
             _io_sti();
             if (mouse_decode(&md, data) != 0) {
                 sprintf(s, "mouse: %d %d %d", md.x, md.y, md.btn);
-                draw_rectangle(buf_back, COL8_WHITE, 0, 64, 200, 80);
-                draw_string(buf_back, COL8_BLACK, 0, 64, s);
-                sheet_refresh(shtctl, sht_back, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+                draw_rectangle(buf_back, SCREEN_WIDTH, COL8_WHITE, 0, 64, 200, 80);
+                draw_string(buf_back, SCREEN_WIDTH, COL8_BLACK, 0, 64, s);
+                sheet_refresh(sht_back, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
                 int x0 = md.mx - md.x;
                 int y0 = md.my - md.y;
                 int x1 = x0 + 16;
@@ -111,7 +120,7 @@ void main() {
                 if (y1 > SCREEN_HEIGHT) {
                     y1 = SCREEN_HEIGHT;
                 }
-                sheet_slide(shtctl, sht_mouse, md.mx, md.my);
+                sheet_slide(sht_mouse, md.mx, md.my);
             }
         }
         

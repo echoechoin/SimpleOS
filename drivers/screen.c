@@ -79,22 +79,6 @@ void init_mouse_cursor(char *mouse, char background) {
             }
         }
     }
-} 
-
-void draw_mouse(unsigned char *vram, int x, int y, char*mouse) {
-    int index = 0;
-    int i, j;
-    if (x < 0) x = 0;
-    if (y < 0) y = 0;
-    if (x > SCREEN_WIDTH) x = SCREEN_WIDTH;
-    if (y > SCREEN_HEIGHT) y = SCREEN_HEIGHT;
-    for (i = 0; i < 16; i++) {
-        for (j = 0; j < 16; j++) {
-            if (x + i >= SCREEN_WIDTH) continue;
-            if (y +i >= SCREEN_HEIGHT) continue;
-            draw_pixel(vram, mouse[index++], i + x, j + y); 
-        }
-    }
 }
 
 static void set_palette(int color, unsigned char r, unsigned char g, unsigned char b) {
@@ -104,52 +88,52 @@ static void set_palette(int color, unsigned char r, unsigned char g, unsigned ch
     port_byte_out(0x03c9, b / 4);
 }
 
-void draw_pixel(unsigned char *vram, unsigned char color, int x, int y) {
-    vram[y * SCREEN_WIDTH + x] = color;
+void draw_pixel(unsigned char *vram, int xsize, unsigned char color, int x, int y) {
+    vram[y * xsize + x] = color;
 }
 
-void draw_char(unsigned char *vram, unsigned char color, int x, int y, char c) {
+void draw_char(unsigned char *vram, int xsize, unsigned char color, int x, int y, char c) {
     int i, j;
     for (i = 0; i < 16; i++) {
         for (j = 0; j < 8; j++) {
             if (charbitmap[c * 16 + i] & (0x80 >> j)) {
-                draw_pixel(vram, color, x + j, y + i);
+                draw_pixel(vram, xsize, color, x + j, y + i);
             }
         }
     }
 }
 
-void draw_string(unsigned char *vram, unsigned char color, int x, int y, char *str) {
+void draw_string(unsigned char *vram, int xsize, unsigned char color, int x, int y, char *str) {
     for (; *str != 0; str++) {
-        draw_char(vram, color, x, y, *str);
+        draw_char(vram, xsize, color, x, y, *str);
         x += 8;
     }
 }
 
-void draw_rectangle(unsigned char *vram, unsigned char color, int x0, int y0, int x1, int y1) {
+void draw_rectangle(unsigned char *vram, int xsize, unsigned char color, int x0, int y0, int x1, int y1) {
     int x, y;
     for (y = y0; y <= y1; y++) {
         for (x = x0; x <= x1; x++) {
-            draw_pixel(vram, color, x, y);
+            draw_pixel(vram, xsize, color, x, y);
         }
     }
 }
 
 void init_screen(unsigned char *vram, int x, int y) {
-    draw_rectangle(vram, COL8_DARK_GREY,       0,      0,      x - 1,  y - 29);
-    draw_rectangle(vram, COL8_LIGHT_GREY,      0,      0,      x - 1,  y - 28);
-    draw_rectangle(vram, COL8_WHITE,           0,      0,      x - 1,  y - 27);
-    draw_rectangle(vram, COL8_LIGHT_GREY,      0,      y - 26, x - 1,  y - 1 );
+    draw_rectangle(vram, SCREEN_WIDTH, COL8_DARK_LIGHT_BLUE,       0,      0,      x - 1,  y - 29);
+    draw_rectangle(vram, SCREEN_WIDTH, COL8_LIGHT_GREY,      0,      0,      x - 1,  y - 28);
+    draw_rectangle(vram, SCREEN_WIDTH, COL8_WHITE,           0,      0,      x - 1,  y - 27);
+    draw_rectangle(vram, SCREEN_WIDTH, COL8_LIGHT_GREY,      0,      y - 26, x - 1,  y - 1 );
 
-    draw_rectangle(vram, COL8_DARK_GREY,       3,      y - 24, 59,     y - 24);
-    draw_rectangle(vram, COL8_LIGHT_GREY,      2,      y - 24, 2,      y - 4 );
-    draw_rectangle(vram, COL8_WHITE,           3,      y - 4,  59,     y - 4 );
-    draw_rectangle(vram, COL8_LIGHT_GREY,      59,     y - 23, 59,     y - 5 );
-    draw_rectangle(vram, COL8_WHITE,           2,      y - 4,  59,     y - 3 );
-    draw_rectangle(vram, COL8_WHITE,           60,     y - 24, 60,     y - 3 );
+    draw_rectangle(vram, SCREEN_WIDTH, COL8_WHITE,       3,      y - 24, 59,     y - 24);
+    draw_rectangle(vram, SCREEN_WIDTH, COL8_WHITE,      2,      y - 24, 2,      y - 4 );
+    draw_rectangle(vram, SCREEN_WIDTH, COL8_DARK_GREY,           3,      y - 4,  59,     y - 4 );
+    draw_rectangle(vram, SCREEN_WIDTH, COL8_DARK_GREY,      59,     y - 23, 59,     y - 5 );
+    draw_rectangle(vram, SCREEN_WIDTH, COL8_BLACK,           2,      y - 4,  59,     y - 3 );
+    draw_rectangle(vram, SCREEN_WIDTH, COL8_BLACK,           60,     y - 24, 60,     y - 3 );
 
-    draw_rectangle(vram, COL8_DARK_GREY,       x - 47, y - 24, x - 4,  y - 24);
-    draw_rectangle(vram, COL8_LIGHT_GREY,      x - 47, y - 23, x - 47, y - 4 );
-    draw_rectangle(vram, COL8_WHITE,           x - 47, y - 3,  x - 4,  y - 3 );
-    draw_rectangle(vram, COL8_WHITE,           x - 3,  y - 24, x - 3,  y - 3 );
+    draw_rectangle(vram, SCREEN_WIDTH, COL8_DARK_GREY,       x - 47, y - 24, x - 4,  y - 24);
+    draw_rectangle(vram, SCREEN_WIDTH, COL8_DARK_GREY,      x - 47, y - 23, x - 47, y - 4 );
+    draw_rectangle(vram, SCREEN_WIDTH, COL8_WHITE,           x - 47, y - 3,  x - 4,  y - 3 );
+    draw_rectangle(vram, SCREEN_WIDTH, COL8_WHITE,           x - 3,  y - 24, x - 3,  y - 3 );
 }

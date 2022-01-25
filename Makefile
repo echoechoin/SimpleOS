@@ -25,6 +25,8 @@ ${IMG}: boot/ipl.bin boot/boot.bin kernel.bin
 
 kernel.bin: boot/kernel_entry.o ${OBJ}
 	$(LD) -T kernel.ld --oformat binary $^ -o $@
+
+__kernel.bin:
 	# $(LD) -Ttext 0x280000 --oformat binary $^ -o $@
 
 kernel.elf: boot/kernel_entry.o ${OBJ}

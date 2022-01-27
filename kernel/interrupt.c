@@ -1,7 +1,7 @@
 #include "interrupt.h"
 
 static void wait_KBC_sendready(void);
-
+extern struct TIMECTL timerctl;
 void init_pic(void) {
     // IMR：中断屏蔽寄存器
     // 屏蔽PIC0和PIC1的所有中断
@@ -102,6 +102,18 @@ int mouse_decode(struct mouse_desc *mdec, unsigned char dat) {
     return -1;
 }
 
+// IRQ0: 时钟中断
+void int_handler20(void) {
+    port_byte_out(PIC0_OCW2, 0x60); // 通知PIC IRQ-0的受理已经完成
+    timerctl.count++;
+    if (timerctl.timeout > 0) {
+        timerctl.timeout--;
+        if (timerctl.timeout == 0) {
+            fifo_bytes_put(timerctl.fifo, timerctl.data);
+        }
+    }
+}
+
 // IRQ1: 键盘中断
 void int_handler21(void) {
     unsigned char data;
@@ -126,3 +138,4 @@ void int_handler2c(void) {
     port_byte_out(PIC0_OCW2, 0x62); // 通知PIC0 IRQ-02的受理已经完成
     return;
 }
+

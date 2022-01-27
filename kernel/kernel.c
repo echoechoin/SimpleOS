@@ -7,6 +7,7 @@
 #include "memory.h"
 #include "sheetctl.h"
 #include "window.h"
+#include "timer.h"
 
 
 void init_mem(struct MEMMAN *memman)
@@ -26,6 +27,11 @@ void main() {
     struct SHTCTL *shtctl;
     struct SHEET *sht_back, *sht_mouse, *sht_win;
     unsigned char *buf_back, buf_mouse[256], *buf_win;
+    struct FIFO_BYTES fifo_timer;
+    char timerbuf[8];
+
+    extern struct TIMECTL timerctl;
+    unsigned char count = 0;
 
     init_gdt();
     init_idt();
@@ -33,12 +39,14 @@ void main() {
     init_palette();
     init_keyboard();
     init_mouse();
+    init_pit();
 
     fifo_bytes_init(&fifo_key, KEY_FIFO_BUF_SIZE, key_buf);
     fifo_bytes_init(&fifo_mouse, MOUSE_FIFO_BUF_SIZE, mouse_buf);
+    fifo_bytes_init(&fifo_timer, sizeof(timerbuf), timerbuf);
 
     _io_sti();
-    port_byte_out(PIC0_IMR, 0xf9); // 开放PIC1以及键盘中断
+    port_byte_out(PIC0_IMR, 0xf8); // 开放PIT\PIC1\键盘中断
     port_byte_out(PIC1_IMR, 0xef); // 开放鼠标中断
 
     init_mem(memman);
@@ -48,12 +56,15 @@ void main() {
         .my = SCREEN_HEIGHT / 2,
     };
 
-    shtctl = shtctl_init(memman, (unsigned char *)VGA_ADDRESS, SCREEN_WIDTH, SCREEN_HEIGHT);
+    set_timer(100, &fifo_timer, 0);
 
+/**************图层管理*************/
+    shtctl = shtctl_init(memman, (unsigned char *)VGA_ADDRESS, SCREEN_WIDTH, SCREEN_HEIGHT);
+    
     buf_back =(unsigned char *)memman_alloc_4k(memman, SCREEN_WIDTH * SCREEN_HEIGHT);
     buf_win = (unsigned char *)memman_alloc_4k(memman, 160 * 68);
 
-    // 给每个图层分配缓冲区
+    // 创建图层
     sht_back = sheet_alloc(shtctl);
     sht_mouse = sheet_alloc(shtctl);
     sht_win = sheet_alloc(shtctl);
@@ -62,7 +73,6 @@ void main() {
     init_screen(buf_back, SCREEN_WIDTH, SCREEN_HEIGHT);
     init_mouse_cursor(buf_mouse, 99);
     init_window(buf_win, 160, 68, "window");
-    draw_string(buf_win, 160, COL8_RED, 2, 30,"hello, SimpleOS!");
 
     // 设置图层的buffer和size
     sheet_setbuf(sht_back, buf_back, SCREEN_WIDTH, SCREEN_HEIGHT, -1);                               // 没有透明色
@@ -70,6 +80,7 @@ void main() {
     sheet_setbuf(sht_win, buf_win, 160, 68, -1);
 
     // 移动图层位置并刷新图层
+    draw_string(buf_back, SCREEN_WIDTH, COL8_DARK_GREY, 10, SCREEN_HEIGHT -22, "start");
     sheet_slide(sht_back, 0, 0);
     sheet_slide(sht_mouse, md.mx, md.my);
     sheet_slide(sht_win, 80, 72);
@@ -80,13 +91,11 @@ void main() {
     sheet_updown(sht_mouse, 2);
     
     // 修改并刷新图层
-    draw_string(buf_back, SCREEN_WIDTH, COL8_RED, 0, 0, "echoechoin");
+    sprintf(s, "count: %d", 0);
+    draw_string(buf_win, 160, COL8_BLACK, 2, 24, s);
     sheet_refresh(sht_back, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     for (;;) {
-        _io_cli();
-        if (fifo_bytes_count(&fifo_key) + fifo_bytes_count(&fifo_mouse) == 0) {
-            __asm__ __volatile__("sti");
-            __asm__ __volatile__("hlt");
+        if (fifo_bytes_count(&fifo_key) + fifo_bytes_count(&fifo_mouse) + fifo_bytes_count(&fifo_timer) == 0) {
             continue;
         }
         int i = 0;
@@ -98,7 +107,6 @@ void main() {
             sheet_refresh(sht_back, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
         } else if (fifo_bytes_count(&fifo_mouse) != 0) {
             i = fifo_bytes_get(&fifo_mouse, &data);
-            _io_sti();
             if (mouse_decode(&md, data) != 0) {
                 sprintf(s, "mouse: %d %d %d", md.x, md.y, md.btn);
                 draw_rectangle(buf_back, SCREEN_WIDTH, COL8_WHITE, 0, 64, 200, 80);
@@ -122,6 +130,14 @@ void main() {
                 }
                 sheet_slide(sht_mouse, md.mx, md.my);
             }
+        } else if (fifo_bytes_count(&fifo_timer) != 0) {
+            i = fifo_bytes_get(&fifo_timer, &data);
+            count++;
+            sprintf(s, "count: %d", count);
+            draw_rectangle(buf_win, 160, COL8_LIGHT_GREY,2,24,80,40);
+            draw_string(buf_win, 160, COL8_BLACK, 2, 24, s);
+            sheet_refresh(sht_win, 0, 0, 160, 68);
+            set_timer(100, &fifo_timer, 0);
         }
         
     }

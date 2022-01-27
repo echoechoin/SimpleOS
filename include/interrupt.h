@@ -1,6 +1,7 @@
 #include "ports.h"
 #include "screen.h"
 #include "fifo.h"
+#include "timer.h"
 
 #ifndef _INTERRUPT_H_
 #define _INTERRUPT_H_
@@ -31,6 +32,7 @@ void init_keyboard(void);
 void init_mouse(void);
 
 void init_pic(void);
+void asm_int_handler20(void);
 void asm_int_handler21(void);
 void asm_int_handler27(void);
 void asm_int_handler2c(void);

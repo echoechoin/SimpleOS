@@ -3,16 +3,33 @@
 
 #include "fifo.h"
 #include "ports.h"
+#include "stdio.h"
 #define PIT_CTRL 0x0043
 #define PIT_CNT0 0x0040
 
-struct TIMECTL {
-    unsigned int count;
+#define MAX_TIMER 500
+
+#define TIMER_FLAGS_ALLOC 1
+#define TIMER_FLAGS_USING 2
+
+struct TIMER {
     unsigned int timeout;
-    struct FIFO_BYTES *fifo;
-    unsigned char data;
+    unsigned int flags;
+    struct FIFO32 *fifo;
+    int data;
+    struct TIMER *next;
+};
+
+struct TIMERCTL {
+    unsigned int count;
+    unsigned int next_time;
+    struct TIMER *t0;
+    struct TIMER timer0[MAX_TIMER];
 };
 
 void init_pit();
-void set_timer(unsigned int timeout, struct FIFO_BYTES *fifo, unsigned char data);
+struct TIMER *timer_alloc();
+void timer_free(struct TIMER *timer);
+void timer_init(struct TIMER *timer, struct FIFO32 *fifo,int data);
+void timer_settime(struct TIMER *timer, unsigned int timeout);
 #endif

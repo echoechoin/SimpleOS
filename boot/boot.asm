@@ -5,16 +5,28 @@ KERNEL_ENTRY EQU   0x00280000
 DSKCAC       EQU   0x00100000
 DSKCAC0      EQU   0x00008000
 
+CYLS         EQU   0x0ff0      ; 设置启动区
+LEDS         EQU   0x0ff1
+VMODE        EQU   0x0ff2      ; 关于颜色数目的信息，颜色的位数
+SCRNX        EQU   0x0ff4      ; 分辨率X
+SCRNY        EQU   0x0ff6      ; 分辨率Y
+VRAM         EQU   0x0ff8      ; 图像缓冲区的起始位置
+
+
 entry:
-    call set_vga_mode
+    call set_vga_mode_320x200x8
     call enable_a20_gate
     call switch_to_32bit_mode
     jmp $
 
-set_vga_mode:
+set_vga_mode_320x200x8:
     pusha
     mov ax, 0x13
     int 0x10
+    mov byte  [VMODE], 8
+    mov word  [SCRNX], 320
+    mov word  [SCRNY], 200
+    mov dword  [VRAM],  0x000a0000
     popa
     ret
 

@@ -1,7 +1,7 @@
 #include "interrupt.h"
 
 static void wait_KBC_sendready(void);
-extern struct TIMECTL timerctl;
+extern struct TIMERCTL timerctl;
 void init_pic(void) {
     // IMR：中断屏蔽寄存器
     // 屏蔽PIC0和PIC1的所有中断
@@ -32,7 +32,9 @@ static void wait_KBC_sendready(void) {
     return;
 }
 
-void init_keyboard(void) {
+void init_keyboard(struct FIFO32 *fifo, int data0) {
+    fifo_key = fifo;
+    data_key = data0;
     // 初始化键盘控制电路
     wait_KBC_sendready();
     port_byte_out(PORT_KEYCMD, KEYCMD_WRITE_MODE);
@@ -41,7 +43,10 @@ void init_keyboard(void) {
     return;
 }
 
-void init_mouse(void) {
+void init_mouse(struct FIFO32 *fifo, int data0, struct mouse_desc *mdec) {
+    fifo_mouse = fifo;
+    data_mouse = data0;
+    mdec->phase = 0;
     wait_KBC_sendready();
     port_byte_out(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
     wait_KBC_sendready();
@@ -49,7 +54,7 @@ void init_mouse(void) {
     return;
 }
 
-int mouse_decode(struct mouse_desc *mdec, unsigned char dat) {
+int mouse_decode(struct mouse_desc *mdec, unsigned char dat, int x, int y) {
     if (mdec->phase == 0) {
         if (dat == 0xfa) {
             mdec->phase = 1;
@@ -84,15 +89,15 @@ int mouse_decode(struct mouse_desc *mdec, unsigned char dat) {
         mdec->y = -mdec->y;
         if (mdec->mx + mdec->x < 0) {
             mdec->mx = 0;
-        } else if (mdec->mx + mdec->x > SCREEN_WIDTH) {
-            mdec->mx = SCREEN_WIDTH;
+        } else if (mdec->mx + mdec->x > x) {
+            mdec->mx = x;
         } else {
             mdec->mx += mdec->x;
         }
         if (mdec->my + mdec->y < 0) {
             mdec->my = 0;
-        } else if (mdec->my + mdec->y > SCREEN_HEIGHT) {
-            mdec->my = SCREEN_HEIGHT;
+        } else if (mdec->my + mdec->y > y) {
+            mdec->my = y;
         } else {
             mdec->my += mdec->y;
         }
@@ -104,22 +109,37 @@ int mouse_decode(struct mouse_desc *mdec, unsigned char dat) {
 
 // IRQ0: 时钟中断
 void int_handler20(void) {
-    port_byte_out(PIC0_OCW2, 0x60); // 通知PIC IRQ-0的受理已经完成
+    port_byte_out(PIC0_OCW2, 0x60); // 接收IRQ-00信号通知PIC
     timerctl.count++;
-    if (timerctl.timeout > 0) {
-        timerctl.timeout--;
-        if (timerctl.timeout == 0) {
-            fifo_bytes_put(timerctl.fifo, timerctl.data);
-        }
+
+    if (timerctl.next_time > timerctl.count) {
+        return;
     }
+
+    struct TIMER *timer = timerctl.t0;
+    for (;;) {
+        // 这里获取到了链表最前面的且没有超时的定时器
+        if (timer->timeout > timerctl.count) {
+            break;
+        }
+
+        // 处理超时了的定时器
+        timer->flags = TIMER_FLAGS_ALLOC;
+        fifo32_put(timer->fifo, timer->data);
+        timer = timer->next;
+    }
+
+    // 将链表最前面的且没有超时的定时器作为链表的第一个定时器
+    timerctl.t0 = timer;
+    timerctl.next_time = timerctl.t0->timeout;
 }
 
 // IRQ1: 键盘中断
 void int_handler21(void) {
-    unsigned char data;
-    data = port_byte_in(0x60);
-    fifo_bytes_put(&fifo_key, data);
+    int data;
     port_byte_out(PIC0_OCW2, 0x61); // 通知PIC IRQ-1的受理已经完成
+    data = (int)port_byte_in(0x60);
+    fifo32_put(fifo_key, data + data_key);
     return;
 }
 
@@ -131,11 +151,11 @@ void int_handler27(void) {
 
 // IRQ12: 鼠标中断
 void int_handler2c(void) {
-    unsigned char data;
-    data = port_byte_in(0x60);
-    fifo_bytes_put(&fifo_mouse, data);
+    int data;
     port_byte_out(PIC1_OCW2, 0x64); // 通知PIC1 IRQ-12的受理已经完成
     port_byte_out(PIC0_OCW2, 0x62); // 通知PIC0 IRQ-02的受理已经完成
+    data = (int)port_byte_in(0x60);
+    fifo32_put(fifo_mouse, data + data_mouse);
     return;
 }
 

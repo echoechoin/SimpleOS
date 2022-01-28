@@ -28,8 +28,15 @@
 #define KEYCMD_SENDTO_MOUSE 0xd4
 #define MOUSECMD_ENABLE 0xf4
 
-void init_keyboard(void);
-void init_mouse(void);
+struct mouse_desc {
+    unsigned char buf[3], phase;
+    int x, y, btn;
+    int mx;
+    int my;
+};
+
+void init_keyboard(struct FIFO32 *fifo, int data0);
+void init_mouse(struct FIFO32 *fifo, int data0, struct mouse_desc *mdec);
 
 void init_pic(void);
 void asm_int_handler20(void);
@@ -38,24 +45,13 @@ void asm_int_handler27(void);
 void asm_int_handler2c(void);
 
 // keyboard
-#define KEY_FIFO_BUF_SIZE 32
-struct FIFO_BYTES fifo_key;
-unsigned char key_buf[KEY_FIFO_BUF_SIZE];
-
+struct FIFO32 *fifo_key;
+int data_key;
 
 // mouse
-#define MOUSE_FIFO_BUF_SIZE 32
-struct mouse_desc {
-    unsigned char buf[3], phase;
-    int x, y, btn;
-    int mx;
-    int my;
-};
-struct FIFO_BYTES fifo_mouse;
-unsigned char mouse_buf[MOUSE_FIFO_BUF_SIZE];
+struct FIFO32 *fifo_mouse;
+int data_mouse;
 
-
-int mouse_decode(struct mouse_desc *mdec, unsigned char dat);
-
+int mouse_decode(struct mouse_desc *mdec, unsigned char dat, int x, int y);
 
 #endif

@@ -55,6 +55,7 @@ void init_mouse(struct FIFO32 *fifo, int data0, struct mouse_desc *mdec) {
 }
 
 int mouse_decode(struct mouse_desc *mdec, unsigned char dat, int x, int y) {
+    dat = dat - 512;
     if (mdec->phase == 0) {
         if (dat == 0xfa) {
             mdec->phase = 1;

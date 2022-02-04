@@ -128,7 +128,9 @@ void main() {
     draw_background_and_string(buf_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 48, "mouse:");
     sheet_refresh(sht_back, 0, 0, BOOT_INFO->scrnx, BOOT_INFO->scrny);
     for (;;) {
+        _io_cli();
         if (fifo32_count(&fifo) == 0) {
+            _io_sti();
             continue;
         }
         fifo32_get(&fifo, &data);
@@ -137,13 +139,13 @@ void main() {
         if (data >= 256 && data <= 511) {
             sprintf(s, "key: %02x", data);
             draw_background_and_string(buf_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 32, s);
-            sheet_refresh(sht_back, 0, 0, BOOT_INFO->scrnx, BOOT_INFO->scrny);
+            sheet_refresh(sht_back, 0, 0, 200, 200);
         // 判断是否是鼠标中断
         } else if (512 <= data && data <= 767) {
             if (mouse_decode(&md, data, BOOT_INFO->scrnx, BOOT_INFO->scrny) != 0) {
                 sprintf(s, "mouse: %d %d %d       ", md.x, md.y, md.btn);
                 draw_background_and_string(buf_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 48, s);
-                sheet_refresh(sht_back, 0, 0, BOOT_INFO->scrnx, BOOT_INFO->scrny);
+                sheet_refresh(sht_back, 0, 0, 200, 200);
                 int x0 = md.mx - md.x;
                 int y0 = md.my - md.y;
                 int x1 = x0 + 16;
@@ -177,7 +179,7 @@ void main() {
         } else {
             sprintf(s, "data unknown: %d", data);
             draw_background_and_string(buf_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 64, s);
-            sheet_refresh(sht_back, 0, 0, BOOT_INFO->scrnx, BOOT_INFO->scrny);
+            sheet_refresh(sht_back, 0, 0, 200, 200);
         }
         
     }

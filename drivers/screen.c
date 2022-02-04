@@ -88,16 +88,12 @@ static void set_palette(int color, unsigned char r, unsigned char g, unsigned ch
     port_byte_out(0x03c9, b / 4);
 }
 
-void draw_pixel(unsigned char *vram, int xsize, unsigned char color, int x, int y) {
-    vram[y * xsize + x] = color;
-}
-
 void draw_char(unsigned char *vram, int xsize, unsigned char color, int x, int y, char c) {
     int i, j;
     for (i = 0; i < 16; i++) {
         for (j = 0; j < 8; j++) {
             if (charbitmap[c * 16 + i] & (0x80 >> j)) {
-                draw_pixel(vram, xsize, color, x + j, y + i);
+                vram[(y + i) * xsize + x + j] = color;
             }
         }
     }
@@ -114,7 +110,7 @@ void draw_rectangle(unsigned char *vram, int xsize, unsigned char color, int x0,
     int x, y;
     for (y = y0; y <= y1; y++) {
         for (x = x0; x <= x1; x++) {
-            draw_pixel(vram, xsize, color, x, y);
+            vram[y * xsize + x] = color;
         }
     }
 }

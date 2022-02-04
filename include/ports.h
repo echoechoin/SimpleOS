@@ -8,6 +8,9 @@ void port_word_out (unsigned short port, unsigned short data);
 
 void _io_cli (void);
 void _io_sti (void);
+void _io_hlt (void);
+void _io_stihlt (void);
+
 
 
 unsigned int _io_load_eflags();

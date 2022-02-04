@@ -11,10 +11,12 @@ VMODE        EQU   0x0ff2      ; 关于颜色数目的信息，颜色的位数
 SCRNX        EQU   0x0ff4      ; 分辨率X
 SCRNY        EQU   0x0ff6      ; 分辨率Y
 VRAM         EQU   0x0ff8      ; 图像缓冲区的起始位置
+VBEMODE      EQU   0x105
 
 
 entry:
-    call set_vga_mode_320x200x8
+    ; call set_vga_mode_320x200x8
+    call choose_vga_mode
     call enable_a20_gate
     call switch_to_32bit_mode
     jmp $
@@ -27,6 +29,56 @@ set_vga_mode_320x200x8:
     mov word  [SCRNX], 320
     mov word  [SCRNY], 200
     mov dword  [VRAM],  0x000a0000
+    popa
+    ret
+
+choose_vga_mode:
+    pusha
+    mov ax, 0x9000
+    mov es, ax
+    mov di, 0
+    mov ax, 0x4f00
+    int 0x10
+    cmp ax, 0x004f
+    jne choose_vga_mode_set_vga_mode_320x200x8
+    ; 检查VBE版本
+    mov ax,[es:di+4]
+    cmp ax, 0x0200
+    jb choose_vga_mode_set_vga_mode_320x200x8
+    ; 检查VBE是否支持0x105模式
+    mov cx, VBEMODE
+    mov ax, 0x4f01
+    int 0x10
+    cmp ax, 0x004f
+    jne choose_vga_mode_set_vga_mode_320x200x8
+    ; 画面模式信息的确认
+    cmp byte [es:di+0x19], 8
+    jne choose_vga_mode_set_vga_mode_320x200x8
+    cmp byte [es:di+0x1b], 4
+    jne choose_vga_mode_set_vga_mode_320x200x8
+    mov ax, [es:di+0x00]
+    and ax, 0x0080
+    jz choose_vga_mode_set_vga_mode_320x200x8
+    ;切换到0x105模式
+    jmp choose_vga_mode_set_vga_mode_1024x768x8
+choose_vga_mode_set_vga_mode_1024x768x8:
+    mov bx, VBEMODE+0x4000
+    mov ax, 0x4f02
+    int 0x10
+    mov BYTE [VMODE] , 8
+    mov ax, [es:di + 0x12]
+    mov word [SCRNX], ax
+    mov ax, [es:di + 0x14]
+    mov word [SCRNY], ax
+    mov eax, [es:di + 0x28]
+    mov dword [VRAM], eax
+    jmp choose_vga_mode_end
+    
+choose_vga_mode_set_vga_mode_320x200x8:
+    call set_vga_mode_320x200x8
+    jmp choose_vga_mode_end
+
+choose_vga_mode_end:
     popa
     ret
 

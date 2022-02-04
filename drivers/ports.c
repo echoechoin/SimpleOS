@@ -49,3 +49,13 @@ void _io_cli (void) {
 void _io_sti (void) {
     __asm__("sti");
 }
+
+void _io_hlt (void) {
+    __asm__("hlt");
+}
+
+void _io_stihlt (void) {
+    __asm__("sti\n\t"
+            "hlt\n\t"
+            );  
+}

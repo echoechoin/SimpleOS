@@ -1,6 +1,7 @@
 #ifndef _SCREEN_H_
 #define _SCREEN_H_
 #include "stdio.h"
+#include "sheetctl.h"
 #define BOOT_INFO_ADDR 0x00000ff0; // TODO: 这里的内存还要对齐！！
 
 struct boot_info {
@@ -39,4 +40,5 @@ void draw_char(unsigned char *vram, int xsize,unsigned char color, int x, int y,
 void draw_string(unsigned char *vram, int xsize, unsigned char color, int x, int y, char *str);
 void draw_background_and_string(unsigned char *vram, int xsize, unsigned char color, unsigned char background_color, int x, int y, char *str);
 
+void draw_string_with_refresh(struct SHEET *sheet, int xsize, unsigned char color, unsigned char background_color, int x, int y, char *str);
 #endif

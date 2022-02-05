@@ -9,7 +9,7 @@ void port_word_out (unsigned short port, unsigned short data);
 void _io_cli (void);
 void _io_sti (void);
 void _io_hlt (void);
-void _io_stihlt (void);
+void _io_stihlt (void); // sti和hlt会合并成一个指令，不会被中断打断
 
 
 

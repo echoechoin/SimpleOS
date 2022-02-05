@@ -121,6 +121,12 @@ void draw_background_and_string(unsigned char *vram, int xsize, unsigned char co
     draw_string(vram, xsize, color, x, y, str);
 }
 
+void draw_string_with_refresh(struct SHEET *sheet, int xsize, unsigned char color, unsigned char background_color, int x, int y, char *str)
+{
+    draw_background_and_string(sheet->buf, xsize, color, background_color, x, y, str);
+    sheet_refresh(sheet, x, y, x + 8 * strlen(str) - 1, y + 15);
+}
+
 void init_screen(unsigned char *vram, int x, int y) {
     draw_rectangle(vram, x, COL8_DARK_LIGHT_BLUE, 0,      0,      x - 1,  y - 29);
     draw_rectangle(vram, x, COL8_LIGHT_GREY,      0,      0,      x - 1,  y - 28);

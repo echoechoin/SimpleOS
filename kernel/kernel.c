@@ -8,6 +8,7 @@
 #include "sheetctl.h"
 #include "window.h"
 #include "timer.h"
+#include "keyboard.h"
 
 void main() {
     struct boot_info *BOOT_INFO = (struct boot_info *) BOOT_INFO_ADDR;
@@ -15,8 +16,8 @@ void main() {
     char s[25] = {0};
     struct MEMMAN *memman = (struct MEMMAN *) MEMMAN_ADDR;
     struct SHTCTL *shtctl;
-    struct SHEET *sht_back, *sht_mouse, *sht_win;
-    unsigned char *buf_back, buf_mouse[256], *buf_win;
+    struct SHEET *sht_back, *sht_mouse, *sht_win, *sht_text;
+    unsigned char *buf_back, buf_mouse[256], *buf_win, *buf_text;
     struct FIFO32 fifo;
     int fifobuf[128];
     struct TIMER *timer1, *timer2, *timer3;
@@ -24,6 +25,7 @@ void main() {
     struct mouse_desc md = {0};
     extern struct TIMERCTL timerctl;
     unsigned char count = 0;
+    int cursor_x = 8;
 
     // 初始化fifo
     fifo32_init(&fifo, 128, fifobuf);
@@ -84,53 +86,60 @@ void main() {
     
     buf_back =(unsigned char *)memman_alloc_4k(memman, BOOT_INFO->scrnx * BOOT_INFO->scrny);
     buf_win = (unsigned char *)memman_alloc_4k(memman, 160 * 68);
+    buf_text = (unsigned char *)memman_alloc_4k(memman, 160 * 200);
 
     // > 创建图层
     sht_back = sheet_alloc(shtctl);
     sht_mouse = sheet_alloc(shtctl);
     sht_win = sheet_alloc(shtctl);
+    sht_text = sheet_alloc(shtctl);
 
     // > 初始化buffer中的内容
     init_screen(buf_back, BOOT_INFO->scrnx, BOOT_INFO->scrny);
     init_mouse_cursor(buf_mouse, 99);
     init_window(buf_win, 160, 68, "window");
+    init_window(buf_text, 160, 200, "text");
 
     // > 设置图层的buffer和size
     sheet_setbuf(sht_back, buf_back, BOOT_INFO->scrnx, BOOT_INFO->scrny, -1);                               // 没有透明色
     sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99); // 透明色号99
     sheet_setbuf(sht_win, buf_win, 160, 68, -1);
+    sheet_setbuf(sht_text, buf_text, 160, 200, -1);
 
     // > 移动图层位置并刷新图层
     draw_string(buf_back, BOOT_INFO->scrnx, COL8_DARK_GREY, 10, BOOT_INFO->scrny -22, "start");
     sheet_slide(sht_back, 0, 0);
     sheet_slide(sht_mouse, md.mx, md.my);
     sheet_slide(sht_win, 160, 120);
+    sheet_slide(sht_text, 300, 72);
 
     // > 修改图层高度并刷新图层
     sheet_updown(sht_back, 0);
     sheet_updown(sht_win, 2);
-    sheet_updown(sht_mouse, 2);
+    sheet_updown(sht_text, 3);
+    sheet_updown(sht_mouse, 4);
     
     // > 修改并刷新图层
+    init_textbox(sht_text, 8, 24, 18);
     sprintf(s, "memory %dMB", memtotal / (1024 * 1024));
-    draw_background_and_string(buf_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 0, s);
+    draw_string_with_refresh(sht_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 0, s);
     sprintf(s, "memory free %dKB", memman_total(memman) / 1024);
-    draw_background_and_string(buf_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 16, s);
+    draw_string_with_refresh(sht_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 16, s);
     sprintf(s, "count: %d", 0);
     draw_string(buf_win, 160, COL8_BLACK, 2, 24, s);
 
     sprintf(s, "scrnx: %d, scrny: %d", BOOT_INFO->scrnx, BOOT_INFO->scrny);
-    draw_background_and_string(buf_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 80, s);
+    draw_string_with_refresh(sht_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 80, s);
     sprintf(s, "vram: %x", BOOT_INFO->vram);
-    draw_background_and_string(buf_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 96, s);
+    draw_string_with_refresh(sht_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 96, s);
 
-    draw_background_and_string(buf_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 32, "key:");
-    draw_background_and_string(buf_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 48, "mouse:");
+    draw_string_with_refresh(sht_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 32, "key:");
+    draw_string_with_refresh(sht_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 48, "mouse:");
     sheet_refresh(sht_back, 0, 0, BOOT_INFO->scrnx, BOOT_INFO->scrny);
     for (;;) {
         _io_cli();
         if (fifo32_count(&fifo) == 0) {
-            _io_sti();
+            _io_stihlt();
             continue;
         }
         fifo32_get(&fifo, &data);
@@ -138,14 +147,26 @@ void main() {
         // 判断是否是键盘中断
         if (data >= 256 && data <= 511) {
             sprintf(s, "key: %02x", data);
-            draw_background_and_string(buf_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 32, s);
-            sheet_refresh(sht_back, 0, 0, 200, 200);
+            draw_string_with_refresh(sht_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 32, s);
+            if (data < 0x54 + 256) {
+                if (keytable[data - 256] != 0 && cursor_x < 140) {
+                    s[0] = keytable[data - 256];
+                    s[1] = 0;
+                    draw_string_with_refresh(sht_text, 160, COL8_BLACK, COL8_WHITE, cursor_x, 24, s);
+                    cursor_x += 8;
+                }
+            }
+            if (data == 256 + 0x0e && cursor_x > 8) {
+                draw_string_with_refresh(sht_text, 160, COL8_BLACK, COL8_WHITE, cursor_x, 24, " ");
+                cursor_x -= 8;
+            }
+            draw_rectangle(sht_text->buf, 160, COL8_BLACK, cursor_x, 24, cursor_x + 7, 39);
+            sheet_refresh(sht_text, cursor_x, 24, cursor_x + 7, 39);
         // 判断是否是鼠标中断
         } else if (512 <= data && data <= 767) {
             if (mouse_decode(&md, data, BOOT_INFO->scrnx, BOOT_INFO->scrny) != 0) {
                 sprintf(s, "mouse: %d %d %d       ", md.x, md.y, md.btn);
-                draw_background_and_string(buf_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 48, s);
-                sheet_refresh(sht_back, 0, 0, 200, 200);
+                draw_string_with_refresh(sht_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 48, s);
                 int x0 = md.mx - md.x;
                 int y0 = md.my - md.y;
                 int x1 = x0 + 16;
@@ -163,12 +184,14 @@ void main() {
                     y1 = BOOT_INFO->scrny;
                 }
                 sheet_slide(sht_mouse, md.mx, md.my);
+                if ((md.btn & 0x01) != 0) {
+                    sheet_slide(sht_text, x0, y0);
+                }
             }
         // 判断是否为定时器中断
         } else if ( 1 <=data && data <= 3) {
             sprintf(s, "timer: %d", data);
-            draw_background_and_string(buf_win, 160, COL8_BLACK, COL8_LIGHT_GREY, 2, 24, s);
-            sheet_refresh(sht_win, 0, 0, 160, 68);
+            draw_string_with_refresh(sht_win, 160, COL8_BLACK, COL8_LIGHT_GREY, 2, 24, s);
             if (data == 1) {
                 timer_settime(timer1, 100);
             } else if (data == 2) {
@@ -178,8 +201,7 @@ void main() {
             }
         } else {
             sprintf(s, "data unknown: %d", data);
-            draw_background_and_string(buf_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 64, s);
-            sheet_refresh(sht_back, 0, 0, 200, 200);
+            draw_string_with_refresh(sht_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 64, s);
         }
         
     }

@@ -1,6 +1,3 @@
-#include <stdio.h>
-
-#include "memory.h"
 #include "sheetctl.h"
 
 struct SHTCTL *shtctl_init(struct MEMMAN *memman, unsigned char *vram,

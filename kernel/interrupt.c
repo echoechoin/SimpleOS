@@ -125,7 +125,7 @@ void int_handler20(void) {
 
         // 处理超时了的定时器
         timer->flags = TIMER_FLAGS_ALLOC;
-        if (timer != mt_timer) {
+        if (timer != task_timer) {
             fifo32_put(timer->fifo, timer->data);
         } else {
             ts = 1;
@@ -137,7 +137,7 @@ void int_handler20(void) {
     timerctl.t0 = timer;
     timerctl.next_time = timerctl.t0->timeout;
     if (ts != 0) {
-        mt_task_switch();
+        task_switch();
     }
 }
 

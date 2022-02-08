@@ -62,7 +62,7 @@ void main() {
     extern struct TIMERCTL timerctl;
     unsigned char count = 0;
     int cursor_x = 8;
-    struct TSS32 tss_a, tss_b;
+    struct TASK *task_b, *task_a;
     struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *) ADDR_GDT;
     int task2_esp;
 
@@ -120,32 +120,6 @@ void main() {
     // memman_free(memman, 0x00010000, 0x0009e000);
     memman_free(memman, 0x00400000, memtotal - 0x00400000);
 
-    // 初始化多任务
-    tss_a.ldtr = 0;
-    tss_a.iomap = 0x40000000;
-    tss_b.ldtr = 0;
-    tss_b.iomap = 0x40000000;
-    set_segmdesc(gdt + 3, 103, (int)&tss_a, AR_TSS32);
-    set_segmdesc(gdt + 4, 103, (int)&tss_b, AR_TSS32);
-    load_tr(3 * 8);
-    int task_b_esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 8;
-    tss_b.eip = (int)&task_b_main;
-    tss_b.eflags = 0x00000202; // IF = 1
-    tss_b.eax = 0;
-    tss_b.ecx = 0;
-    tss_b.edx = 0;
-    tss_b.ebx = 0;
-    tss_b.esp = task_b_esp;
-    tss_b.ebp = 0;
-    tss_b.esi = 0;
-    tss_b.edi = 0;
-    tss_b.es = 1 * 8;
-    tss_b.cs = 2 * 8;
-    tss_b.ss = 1 * 8;
-    tss_b.ds = 1 * 8;
-    tss_b.fs = 1 * 8;
-    tss_b.gs = 1 * 8;
-    mt_init();
 
     // 图层管理
     shtctl = shtctl_init(memman, (unsigned char *)BOOT_INFO->vram, BOOT_INFO->scrnx, BOOT_INFO->scrny);
@@ -156,7 +130,6 @@ void main() {
 
     // > 创建图层
     sht_back = sheet_alloc(shtctl);
-    *((int *)(task_b_esp + 4 )) = (int)sht_back;
     sht_mouse = sheet_alloc(shtctl);
     sht_win = sheet_alloc(shtctl);
     sht_text = sheet_alloc(shtctl);
@@ -203,6 +176,21 @@ void main() {
     draw_string_with_refresh(sht_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 32, "key:");
     draw_string_with_refresh(sht_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 48, "mouse:");
     sheet_refresh(sht_back, 0, 0, BOOT_INFO->scrnx, BOOT_INFO->scrny);
+
+    // 初始化多任务
+    task_a = task_init(memman);
+    task_b = task_alloc();
+    task_b->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 8;
+    *((int *)(task_b->tss.esp + 4 )) = (int)sht_back;
+    task_b->tss.eip = (int) &task_b_main;
+    task_b->tss.es = 1 * 8;
+    task_b->tss.cs = 2 * 8;
+    task_b->tss.ss = 1 * 8;
+    task_b->tss.ds = 1 * 8;
+    task_b->tss.fs = 1 * 8;
+    task_b->tss.gs = 1 * 8;
+    task_run(task_b);
+
     for (;;) {
         _io_cli();
         if (fifo32_count(&fifo) == 0) {

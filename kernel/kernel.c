@@ -9,6 +9,42 @@
 #include "window.h"
 #include "timer.h"
 #include "keyboard.h"
+#include "task.h"
+#include "dsctbl.h"
+
+void task_b_main(struct SHEET *sht_bak) {
+    struct FIFO32 fifo;
+    struct TIMER *timer_ts, *timer_refresh;
+    int i, fifobuf[128];
+
+    fifo32_init(&fifo, 128, fifobuf);
+
+    timer_refresh = timer_alloc();
+
+    timer_init(timer_refresh, &fifo, 1);
+    
+    timer_settime(timer_refresh, 3);
+   
+    int data;
+    int count = 0;
+    char s[20];
+    struct boot_info *BOOT_INFO = (struct boot_info *) BOOT_INFO_ADDR;
+    for (;;) {
+        count++;
+        _io_cli();
+        if (fifo32_count(&fifo) == 0) {
+            _io_sti();
+        } else {
+            fifo32_get(&fifo, &data);
+            _io_sti();
+            if (data == 1){
+                sprintf(s, "count: %d", count);
+                draw_string_with_refresh(sht_bak, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 16*7, s);
+                timer_settime(timer_refresh, 3);
+            }
+        }
+    }
+}
 
 void main() {
     struct boot_info *BOOT_INFO = (struct boot_info *) BOOT_INFO_ADDR;
@@ -26,6 +62,9 @@ void main() {
     extern struct TIMERCTL timerctl;
     unsigned char count = 0;
     int cursor_x = 8;
+    struct TSS32 tss_a, tss_b;
+    struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *) ADDR_GDT;
+    int task2_esp;
 
     // 初始化fifo
     fifo32_init(&fifo, 128, fifobuf);
@@ -78,8 +117,35 @@ void main() {
     // 初始化内存
     unsigned memtotal = memtest(0x00400000, 0xbfffffff);
     memman_init(memman);
-    memman_free(memman, 0x00010000, 0x0009e000);
+    // memman_free(memman, 0x00010000, 0x0009e000);
     memman_free(memman, 0x00400000, memtotal - 0x00400000);
+
+    // 初始化多任务
+    tss_a.ldtr = 0;
+    tss_a.iomap = 0x40000000;
+    tss_b.ldtr = 0;
+    tss_b.iomap = 0x40000000;
+    set_segmdesc(gdt + 3, 103, (int)&tss_a, AR_TSS32);
+    set_segmdesc(gdt + 4, 103, (int)&tss_b, AR_TSS32);
+    load_tr(3 * 8);
+    int task_b_esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 8;
+    tss_b.eip = (int)&task_b_main;
+    tss_b.eflags = 0x00000202; // IF = 1
+    tss_b.eax = 0;
+    tss_b.ecx = 0;
+    tss_b.edx = 0;
+    tss_b.ebx = 0;
+    tss_b.esp = task_b_esp;
+    tss_b.ebp = 0;
+    tss_b.esi = 0;
+    tss_b.edi = 0;
+    tss_b.es = 1 * 8;
+    tss_b.cs = 2 * 8;
+    tss_b.ss = 1 * 8;
+    tss_b.ds = 1 * 8;
+    tss_b.fs = 1 * 8;
+    tss_b.gs = 1 * 8;
+    mt_init();
 
     // 图层管理
     shtctl = shtctl_init(memman, (unsigned char *)BOOT_INFO->vram, BOOT_INFO->scrnx, BOOT_INFO->scrny);
@@ -90,6 +156,7 @@ void main() {
 
     // > 创建图层
     sht_back = sheet_alloc(shtctl);
+    *((int *)(task_b_esp + 4 )) = (int)sht_back;
     sht_mouse = sheet_alloc(shtctl);
     sht_win = sheet_alloc(shtctl);
     sht_text = sheet_alloc(shtctl);
@@ -189,7 +256,7 @@ void main() {
                 }
             }
         // 判断是否为定时器中断
-        } else if ( 1 <=data && data <= 3) {
+        } else if ( 1 <=data && data <= 10) {
             sprintf(s, "timer: %d", data);
             draw_string_with_refresh(sht_win, 160, COL8_BLACK, COL8_LIGHT_GREY, 2, 24, s);
             if (data == 1) {
@@ -199,6 +266,7 @@ void main() {
             } else if (data == 3) {
                 timer_settime(timer3, 500);
             }
+            
         } else {
             sprintf(s, "data unknown: %d", data);
             draw_string_with_refresh(sht_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_WHITE, 0, 64, s);

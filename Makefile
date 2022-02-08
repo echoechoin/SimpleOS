@@ -3,11 +3,12 @@ DASM := ndisasm
 CC   := i386-elf-gcc
 LD   := i386-elf-ld
 GDB  := i386-elf-gdb
+# QEMU := qemu-system-x86_64 这个在使用TSS的时候就不行了
 QEMU := qemu-system-i386
 
 IMG           := os-image.bin
 C_SOURCES     := $(wildcard kernel/*.c drivers/*.c libc/**/*.c)
-OBJ           := ${C_SOURCES:.c=.o} kernel/int_handler.o
+OBJ           := ${C_SOURCES:.c=.o} kernel/int_handler.o kernel/task_handler.o
 KERNEL_OFFSET := 0x280000
 CFLAGS        := -std=gnu99 -g -I./include -I./libc/include
 

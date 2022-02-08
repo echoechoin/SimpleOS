@@ -2,6 +2,7 @@
 #include "screen.h"
 #include "fifo.h"
 #include "timer.h"
+#include "task.h"
 
 #ifndef _INTERRUPT_H_
 #define _INTERRUPT_H_

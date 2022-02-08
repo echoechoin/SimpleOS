@@ -3,7 +3,6 @@
 
 #include "memory.h"
 #include "stdio.h"
-#include "screen.h"
 #define MAX_SHEETS 256
 #define SHEET_USE 1
 struct SHEET

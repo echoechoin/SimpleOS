@@ -112,11 +112,10 @@ int mouse_decode(struct mouse_desc *mdec, unsigned char dat, int x, int y) {
 void int_handler20(void) {
     port_byte_out(PIC0_OCW2, 0x60); // 接收IRQ-00信号通知PIC
     timerctl.count++;
-
     if (timerctl.next_time > timerctl.count) {
         return;
     }
-
+    char ts = 0;
     struct TIMER *timer = timerctl.t0;
     for (;;) {
         // 这里获取到了链表最前面的且没有超时的定时器
@@ -126,13 +125,20 @@ void int_handler20(void) {
 
         // 处理超时了的定时器
         timer->flags = TIMER_FLAGS_ALLOC;
-        fifo32_put(timer->fifo, timer->data);
+        if (timer != mt_timer) {
+            fifo32_put(timer->fifo, timer->data);
+        } else {
+            ts = 1;
+        }
         timer = timer->next;
     }
 
     // 将链表最前面的且没有超时的定时器作为链表的第一个定时器
     timerctl.t0 = timer;
     timerctl.next_time = timerctl.t0->timeout;
+    if (ts != 0) {
+        mt_task_switch();
+    }
 }
 
 // IRQ1: 键盘中断

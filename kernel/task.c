@@ -28,7 +28,7 @@ struct TASK *task_alloc(void) {
     int i;
     struct TASK *task;
     for(i = 0; i < MAX_TASKS; i++) {
-        if (taskctl->tasks0[i].flags = 0) {
+        if (taskctl->tasks0[i].flags == 0) {
             task = &taskctl->tasks0[i];
             task->flags = 1;
             task->tss.eflags = 0x00000202;
@@ -52,20 +52,53 @@ struct TASK *task_alloc(void) {
 }
 
 void task_run(struct TASK *task) {
-    task->flags = 2;
     taskctl->tasks[taskctl->running] = task;
     taskctl->running++;
+    task->flags = 2;
+    return;
+}
+
+void task_sleep(struct TASK *task) {
+    int i;
+    char ts = 0;
+    if (task->flags == 2) {
+        if (task == taskctl->tasks[taskctl->now]) {
+            ts = 1;
+        }
+    }
+
+    for (i = 0; i < taskctl->running; i++) {
+        if (taskctl->tasks[i] == task)
+            break;
+    }
+    taskctl->running--;
+    if (i < taskctl->now) {
+        taskctl->now--;
+    }
+
+    for(; i < taskctl->running; i++) {
+        taskctl->tasks[i] = taskctl->tasks[i + 1];
+    }
+    task->flags = 1;
+    if (ts != 0) {
+        if (taskctl->now >= taskctl->running) {
+            taskctl->now = 0;
+        }
+        far_jmp(0, taskctl->tasks[taskctl->now]->sel);
+    }
     return;
 }
 
 void task_switch(void) {
-    timer_settime(task_timer, 10);
+    timer_settime(task_timer, 2);
     if (taskctl->running >= 2) {
         taskctl->now++; // 表示当前需要切换的task
         if (taskctl->now == taskctl->running) {
             taskctl->now = 0; // 所有的task都切换了一次后，从头开始
         }
-        far_jmp(0, taskctl->tasks0[taskctl->now].sel);
+        if (taskctl->tasks[taskctl->now]->flags >= 2) {
+            far_jmp(0, taskctl->tasks[taskctl->now]->sel);
+        }
     }
     return;
 }

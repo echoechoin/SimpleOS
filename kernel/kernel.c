@@ -17,7 +17,7 @@ void task_b_main(struct SHEET *sht_bak) {
     struct TIMER *timer_ts, *timer_refresh;
     int i, fifobuf[128];
 
-    fifo32_init(&fifo, 128, fifobuf);
+    fifo32_init(&fifo, 128, fifobuf, NULL);
 
     timer_refresh = timer_alloc();
 
@@ -67,7 +67,7 @@ void main() {
     int task2_esp;
 
     // 初始化fifo
-    fifo32_init(&fifo, 128, fifobuf);
+    fifo32_init(&fifo, 128, fifobuf, NULL);
 
     // 初始化全局描述符
     init_gdt();
@@ -179,6 +179,7 @@ void main() {
 
     // 初始化多任务
     task_a = task_init(memman);
+    fifo.task = task_a;
     task_b = task_alloc();
     task_b->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 8;
     *((int *)(task_b->tss.esp + 4 )) = (int)sht_back;
@@ -194,8 +195,8 @@ void main() {
     for (;;) {
         _io_cli();
         if (fifo32_count(&fifo) == 0) {
-            _io_stihlt();
-            continue;
+            task_sleep(task_a); // 直到fifo中有数据才会被唤醒
+            _io_sti();
         }
         fifo32_get(&fifo, &data);
 
@@ -248,11 +249,11 @@ void main() {
             sprintf(s, "timer: %d", data);
             draw_string_with_refresh(sht_win, 160, COL8_BLACK, COL8_LIGHT_GREY, 2, 24, s);
             if (data == 1) {
-                timer_settime(timer1, 100);
+                timer_settime(timer1, 1000);
             } else if (data == 2) {
-                timer_settime(timer2, 200);
+                timer_settime(timer2, 2000);
             } else if (data == 3) {
-                timer_settime(timer3, 500);
+                timer_settime(timer3, 5000);
             }
             
         } else {

@@ -35,6 +35,13 @@ struct mouse_desc {
     int mx;
     int my;
 };
+// keyboard
+struct FIFO32 *fifo_key;
+int data_key;
+
+// mouse
+struct FIFO32 *fifo_mouse;
+int data_mouse;
 
 void init_keyboard(struct FIFO32 *fifo, int data0);
 void init_mouse(struct FIFO32 *fifo, int data0, struct mouse_desc *mdec);
@@ -44,15 +51,6 @@ void asm_int_handler20(void);
 void asm_int_handler21(void);
 void asm_int_handler27(void);
 void asm_int_handler2c(void);
-
-// keyboard
-struct FIFO32 *fifo_key;
-int data_key;
-
-// mouse
-struct FIFO32 *fifo_mouse;
-int data_mouse;
-
 int mouse_decode(struct mouse_desc *mdec, unsigned char dat, int x, int y);
 
 #endif

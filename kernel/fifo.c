@@ -19,7 +19,8 @@ int fifo32_put(struct FIFO32 *fifo, int data)
     fifo->count++;
     if (fifo->task != NULL) {
         if (fifo->task->flags != 2) {
-            task_run(fifo->task);
+            // 不修改优先级，仅让程序运行
+            task_run(fifo->task, 0);
         }
     }
     return 0;

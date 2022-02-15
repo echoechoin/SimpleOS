@@ -15,12 +15,13 @@ struct TASK *task_init(struct MEMMAN *memman) {
     }
     task = task_alloc();
     task->flags = 2; // 初始化为第一个任务 2 表示running 1表示sleeping
+    task->priority = 3;
     taskctl->running = 1;
     taskctl->now = 0;
     taskctl->tasks[0] = task;
     load_tr(task->sel);
     task_timer = timer_alloc();
-    timer_settime(task_timer, 10);
+    timer_settime(task_timer, task->priority);
     return task;
 }
 
@@ -51,10 +52,16 @@ struct TASK *task_alloc(void) {
     return NULL;
 }
 
-void task_run(struct TASK *task) {
-    taskctl->tasks[taskctl->running] = task;
-    taskctl->running++;
-    task->flags = 2;
+void task_run(struct TASK *task, int priority) {
+    if (priority > 0) {
+        task->priority = priority;
+    }
+
+    if (task->flags != 2) {
+        task->flags = 2;
+        taskctl->tasks[taskctl->running] = task;
+        taskctl->running++;
+    }
     return;
 }
 
@@ -90,15 +97,18 @@ void task_sleep(struct TASK *task) {
 }
 
 void task_switch(void) {
-    timer_settime(task_timer, 2);
+    struct TASK *task;
+    taskctl->now++;
+
+    if (taskctl->now >= taskctl->running) {
+        taskctl->now = 0;
+    }
+
+    task = taskctl->tasks[taskctl->now];
+    timer_settime(task_timer, task->priority);
+
     if (taskctl->running >= 2) {
-        taskctl->now++; // 表示当前需要切换的task
-        if (taskctl->now == taskctl->running) {
-            taskctl->now = 0; // 所有的task都切换了一次后，从头开始
-        }
-        if (taskctl->tasks[taskctl->now]->flags >= 2) {
-            far_jmp(0, taskctl->tasks[taskctl->now]->sel);
-        }
+        far_jmp(0, task->sel);
     }
     return;
 }

@@ -16,6 +16,7 @@ struct TSS32 {
 struct TASK {
     int sel; // 存放GDT的编号
     int flags; // 判断任务是否在运行
+    int priority; // 优先级
     struct TSS32 tss;
 };
 
@@ -34,7 +35,7 @@ void far_jmp(int eip, int cs);
 struct TASK *task_init(struct MEMMAN *memman);
 struct TASK *task_alloc(void);
 void task_sleep(struct TASK *task);
-void task_run(struct TASK *task);
+void task_run(struct TASK *task, int priority);
 void task_switch(void);
 
 #endif

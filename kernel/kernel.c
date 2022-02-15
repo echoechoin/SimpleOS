@@ -14,7 +14,7 @@
 
 void task_b_main(struct SHEET *sht_bak) {
     struct FIFO32 fifo;
-    struct TIMER *timer_ts, *timer_refresh;
+    struct TIMER *timer_refresh;
     int i, fifobuf[128];
 
     fifo32_init(&fifo, 128, fifobuf, NULL);
@@ -22,7 +22,7 @@ void task_b_main(struct SHEET *sht_bak) {
     timer_init(timer_refresh, &fifo, 1);
     timer_settime(timer_refresh, 3);
     int data;
-    int count = 0;
+    int count = 0, count0 = 0;
     char s[20];
     for (;;) {
         count++;
@@ -33,9 +33,10 @@ void task_b_main(struct SHEET *sht_bak) {
             fifo32_get(&fifo, &data);
             _io_sti();
             if (data == 1){
-                sprintf(s, "count: %d", count);
+                sprintf(s, "count: %d", count - count0);
                 draw_string_with_refresh(sht_bak, 144, COL8_BLACK, COL8_WHITE, 4, 16 * 2, s);
                 timer_settime(timer_refresh, 3);
+                count0 = count;
             }
         }
     }
@@ -146,7 +147,7 @@ void main() {
         task_b[i]->tss.fs = 1 * 8;
         task_b[i]->tss.gs = 1 * 8;
         *((int *) (task_b[i]->tss.esp + 4)) = (int) sht_win_b[i];
-        task_run(task_b[i]);
+        task_run(task_b[i], (i + 1));
     }
     
     sprintf(s, "memory %dMB", memtotal / (1024 * 1024));
@@ -196,10 +197,10 @@ void main() {
             }
         // 判断是否为定时器中断
         } else if ( 1 <=data && data <= 10) {
-            sprintf(s, "timer: %d", data);
+            sprintf(s, "timer: %d", i++);
             draw_string_with_refresh(sht_back, BOOT_INFO->scrnx, COL8_BLACK, COL8_LIGHT_GREY, 0, 16 * 10, s);
             if (data == 1) {
-                timer_settime(timer1, 1000);
+                timer_settime(timer1, 100);
             }
             
         } else {
